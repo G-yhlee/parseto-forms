@@ -102,16 +102,25 @@
 	});
 
 	async function handleSave() {
-		if (!params) return;
+		if (!store.selectedCollection || !store.record) {
+			console.error('No collection or record selected');
+			return;
+		}
 		
-		const result = await store.saveRecord(params.collection, params.recordId);
+		console.log('=== SAVE START ===');
+		console.log('Before save - record data:', JSON.stringify(store.record, null, 2));
+		console.log('Saving to collection:', store.selectedCollection.name);
+		
+		const result = await store.saveRecord(store.selectedCollection.name, store.record.id);
 		
 		if (result.success) {
-			// 성공 알림 또는 추가 처리
-			console.log('Record saved successfully');
+			console.log('=== SAVE SUCCESS ===');
+			console.log('After save - record data:', JSON.stringify(result.record, null, 2));
+			alert('✓ Record saved successfully!');
 		} else {
-			// 에러 처리
-			console.error('Failed to save record:', result.error);
+			console.error('=== SAVE FAILED ===');
+			console.error('Error:', result.error);
+			alert('⚠️ Failed to save: ' + (result.error || 'Unknown error'));
 		}
 	}
 
@@ -122,36 +131,21 @@
 	function handleRecordSelect(recordId: string) {
 		if (!store.selectedCollection) return;
 		
-		// 직접 레코드 로드
+		// 직접 레코드 로드 - collection name 사용
 		const params = {
-			collection: store.selectedCollection!.id,
+			collection: store.selectedCollection!.name,
 			recordId: recordId
 		};
 		store.loadRecord(params);
-		
-		// URL 비동기 업데이트
-		setTimeout(() => {
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.set('collection', store.selectedCollection!.id);
-			newUrl.searchParams.set('recordId', recordId);
-			goto(newUrl.toString(), { replaceState: true });
-		}, 0);
 	}
 
 	function handleCollectionSelect(collection: CollectionEntity) {
-		console.log('Route: handleCollectionSelect called with:', collection.name, collection.id);
+		// 이미 선택된 컴렉션이면 아무것도 하지 않음
+		if (store.selectedCollection?.id === collection.id) return;
 		
-		// URL 업데이트 없이 직접 스토어 업데이트
+		// 직접 스토어 업데이트만 - URL 변경 없이
 		store.setSelectedCollection(collection);
-		store.loadRecordList(collection.id);
-		
-		// URL은 비동기로 업데이트 (무한루프 방지)
-		setTimeout(() => {
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.set('collection', collection.id);
-			newUrl.searchParams.delete('recordId');
-			goto(newUrl.toString(), { replaceState: true });
-		}, 0);
+		store.loadRecordList(collection.name); // ID 대신 Name 사용
 	}
 </script>
 
@@ -225,10 +219,17 @@
 						<div class="panel-content">
 							{#if isEditMode}
 								<div class="editor-view">
-									<JsonEditor
-										data={store.record}
-										onUpdate={handleRecordUpdate}
-									/>
+									{#if !store.saving}
+										<JsonEditor
+											data={store.record}
+											onUpdate={handleRecordUpdate}
+										/>
+									{:else}
+										<div class="saving-overlay">
+											<div class="spinner"></div>
+											<p>Saving changes...</p>
+										</div>
+									{/if}
 								</div>
 							{:else}
 								<div class="json-view">
@@ -467,6 +468,31 @@
 		background: #f9fafb;
 		padding: 1rem;
 		border-radius: 6px;
+	}
+	
+	.saving-overlay {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		min-height: 200px;
+		color: #6b7280;
+	}
+	
+	.saving-overlay .spinner {
+		width: 32px;
+		height: 32px;
+		border: 3px solid #f3f4f6;
+		border-top: 3px solid #3b82f6;
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+		margin-bottom: 1rem;
+	}
+	
+	.saving-overlay p {
+		margin: 0;
+		font-size: 0.875rem;
 	}
 
 

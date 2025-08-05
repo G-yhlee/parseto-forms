@@ -62,6 +62,11 @@ export function createTypeEditorStore() {
     },
 
     selectCollection(collection: CollectionEntity) {
+      // 이미 선택된 컴렉션이면 아무것도 하지 않음
+      if (selectedCollection?.id === collection.id) {
+        return;
+      }
+      
       selectedCollection = collection;
       // 다른 컬렉션의 레코드 데이터만 초기화
       recordList = [];
@@ -79,10 +84,13 @@ export function createTypeEditorStore() {
     },
 
     async loadRecordList(collection: string) {
+      // 중복 로딩 방지
       if (listLoading) {
         console.log('Store: Already loading record list, skipping...');
         return;
       }
+      
+      // 중복 체크 제거 - 항상 새로 로드
       
       console.log('Store: Loading record list for collection:', collection);
       listLoading = true;
@@ -141,10 +149,22 @@ export function createTypeEditorStore() {
         const result = await TypeEditorService.saveRecord(collection, recordId, state.record);
         
         if (result.success && result.record) {
+          // 업데이트된 레코드로 상태 업데이트
           state.record = result.record;
           state.originalRecord = TypeEditorService.deepClone(result.record);
           this.checkChanges();
           this.generateTypes();
+          
+          // 레코드 리스트에서 해당 레코드 업데이트 (중복 API 호출 방지)
+          const recordIndex = recordList.findIndex(r => r.id === result.record!.id);
+          console.log('Updating recordList - found index:', recordIndex, 'total records:', recordList.length);
+          if (recordIndex !== -1) {
+            console.log('Before update:', JSON.stringify(recordList[recordIndex], null, 2));
+            recordList[recordIndex] = result.record;
+            console.log('After update:', JSON.stringify(recordList[recordIndex], null, 2));
+          } else {
+            console.warn('Record not found in recordList for update!');
+          }
         } else {
           state.error = result.error || 'Failed to save';
         }

@@ -20,8 +20,16 @@ export class TypeEditorService {
    */
   private static async getCollectionNameById(collectionId: string): Promise<string | null> {
     try {
-      const collection = await this.container.collectionDAO.findById(collectionId);
-      return collection?.name || null;
+      // 먼저 collectionRepository에서 찾기
+      const collections = await this.container.collectionRepository.findAll();
+      const collection = collections.find(c => c.id === collectionId);
+      if (collection) {
+        return collection.name;
+      }
+      
+      // fallback: collectionDAO 사용
+      const collectionFromDAO = await this.container.collectionDAO.findById(collectionId);
+      return collectionFromDAO?.name || null;
     } catch (error) {
       console.error('Failed to get collection name:', error);
       return null;

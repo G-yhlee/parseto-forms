@@ -41,7 +41,32 @@ export class DataFormatters {
   }
 
   // Get field type for display
-  static getFieldType(key: string): string {
+  static getFieldType(key: string, value?: any): string {
+    // If value is provided, determine type from actual value
+    if (value !== undefined && value !== null) {
+      if (typeof value === 'boolean') {
+        return 'boolean';
+      }
+      if (typeof value === 'number') {
+        return 'number';
+      }
+      if (typeof value === 'object') {
+        return 'json';
+      }
+      if (typeof value === 'string') {
+        // Check if it's a date string
+        if (['created', 'updated'].includes(key) || 
+            key.toLowerCase().includes('date') || 
+            key.toLowerCase().includes('time') ||
+            /^\d{4}-\d{2}-\d{2}/.test(value)) {
+          return 'datetime';
+        }
+        if (key === 'email') return 'email';
+        return 'string';
+      }
+    }
+    
+    // Fallback to field name analysis
     if (['created', 'updated'].includes(key)) return 'datetime';
     if (key === 'email') return 'email';
     if (['verified', 'emailVisibility', 'emailConsent'].includes(key)) return 'bool';

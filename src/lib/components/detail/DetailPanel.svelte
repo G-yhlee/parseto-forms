@@ -2,6 +2,7 @@
 	import type { PocketBaseRecord } from '$lib/pocketbase';
 	import DetailHeader from './DetailHeader.svelte';
 	import DetailContent from './DetailContent.svelte';
+	import TypeViewer from './TypeViewer.svelte';
 
 	interface Props {
 		record: PocketBaseRecord;
@@ -9,6 +10,12 @@
 	}
 
 	const { record, onClose }: Props = $props();
+
+	let selectedTab = $state<'data' | 'type'>('data');
+
+	function handleTabChange(tab: 'data' | 'type') {
+		selectedTab = tab;
+	}
 
 	let panelWidth = $state(40); // percentage
 	let isResizing = $state(false);
@@ -47,9 +54,16 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="overlay" onclick={onClose}></div>
 <div class="detail-panel" style="width: {panelWidth}%">
-	<div class="resize-handle" onmousedown={handleMouseDown}></div>
-	<DetailHeader {onClose} />
-	<DetailContent {record} />
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="resize-handle" onmousedown={handleMouseDown} role="separator" aria-label="Resize panel"></div>
+	<DetailHeader {record} {selectedTab} {onClose} onTabChange={handleTabChange} />
+	<div class="panel-content">
+		{#if selectedTab === 'data'}
+			<DetailContent {record} />
+		{:else}
+			<TypeViewer {record} />
+		{/if}
+	</div>
 </div>
 
 <style>
@@ -84,6 +98,13 @@
 		flex-direction: column;
 		z-index: 10000;
 		animation: slideInFromRight 0.3s ease;
+	}
+
+	.panel-content {
+		flex: 1;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.resize-handle {

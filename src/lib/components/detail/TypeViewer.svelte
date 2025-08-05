@@ -1,9 +1,18 @@
 <script lang="ts">
-  import { Code, Hash, Type, Calendar, ToggleLeft, FileText, Database, Copy, Check } from 'lucide-svelte';
+  import {
+    Code,
+    Hash,
+    Type,
+    Calendar,
+    ToggleLeft,
+    FileText,
+    Database,
+    Copy,
+    Check
+  } from 'lucide-svelte';
   import type { PocketBaseRecord } from '$lib/pocketbase';
   import { DataFormatters } from '$lib/utils/formatters';
-  import { TypeGenerator } from '$lib/utils/typeGenerator';
-  import { createHighlightedCode } from '$lib/utils/syntaxHighlighter';
+  import { TypeGenerator, createHighlightedCode } from '$lib/modules/typeviewer';
 
   interface Props {
     record: PocketBaseRecord;

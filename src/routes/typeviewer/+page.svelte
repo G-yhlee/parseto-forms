@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { TypeGenerator } from '$lib/utils/typeGenerator';
-	import { createHighlightedCode } from '$lib/utils/syntaxHighlighter';
-	import JsonEditor from '$lib/components/typeviewer/JsonEditor.svelte';
+	import { TypeGenerator, createHighlightedCode, JsonEditor } from '$lib/modules/typeviewer';
 
 	let jsonInput = $state(`{
   "bookstore": {

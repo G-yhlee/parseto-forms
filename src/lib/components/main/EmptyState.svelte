@@ -1,0 +1,12 @@
+<div class="empty">No records found</div>
+
+<style>
+  .empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+</style>

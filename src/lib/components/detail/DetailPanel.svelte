@@ -1,0 +1,71 @@
+<script lang="ts">
+	import type { PocketBaseRecord } from '$lib/pocketbase';
+	import DetailHeader from './DetailHeader.svelte';
+	import DetailContent from './DetailContent.svelte';
+
+	interface Props {
+		record: PocketBaseRecord;
+		onClose: () => void;
+	}
+
+	const { record, onClose }: Props = $props();
+</script>
+
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="overlay" onclick={onClose}></div>
+<div class="detail-panel">
+	<DetailHeader {onClose} />
+	<DetailContent {record} />
+</div>
+
+<style>
+	.overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.5);
+		z-index: 9999;
+		animation: fadeIn 0.3s ease;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	.detail-panel {
+		position: fixed;
+		top: 0;
+		right: 0;
+		width: 40%;
+		height: 100vh;
+		background: white;
+		box-shadow: -4px 0 32px rgba(0, 0, 0, 0.2);
+		display: flex;
+		flex-direction: column;
+		z-index: 10000;
+		animation: slideInFromRight 0.3s ease;
+	}
+
+	@keyframes slideInFromRight {
+		from {
+			transform: translateX(100%);
+		}
+		to {
+			transform: translateX(0);
+		}
+	}
+
+	@media (max-width: 768px) {
+		.detail-panel {
+			width: 100%;
+		}
+	}
+</style>

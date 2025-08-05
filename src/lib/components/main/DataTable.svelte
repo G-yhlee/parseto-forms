@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PocketBaseRecord } from '$lib/pocketbase';
-  import { DataFormatters } from '$lib/utils/formatters';
+  import { ColumnExtractor } from '$lib/utils/columnExtractor';
   import TableHeader from './table/TableHeader.svelte';
   import TableRow from './table/TableRow.svelte';
 
@@ -11,19 +11,19 @@
 
   const { records, onRecordSelect }: Props = $props();
 
-  // Get table columns from first record
-  let columns = $derived(
-    records.length > 0 
-      ? Object.keys(records[0]).filter(key => !['collectionId', 'collectionName'].includes(key))
-      : []
-  );
+  // Extract all possible columns including nested fields
+  let columns = $derived.by(() => {
+    if (records.length === 0) return [];
+    return ColumnExtractor.extractColumns(records);
+  });
 
   // Debug logging
   $effect(() => {
     console.log('DataTable - records:', records);
-    console.log('DataTable - columns:', columns);
+    console.log('DataTable - extracted columns:', columns);
     if (records.length > 0) {
       console.log('DataTable - first record:', records[0]);
+      console.log('DataTable - column analysis:', ColumnExtractor.analyzeColumns(records));
     }
   });
 </script>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PocketBaseRecord } from '$lib/pocketbase';
   import { DataFormatters } from '$lib/utils/formatters';
+  import { ColumnExtractor } from '$lib/utils/columnExtractor';
   import TableCell from './TableCell.svelte';
 
   interface Props {
@@ -30,7 +31,7 @@
   {#each columns.filter(col => col !== 'id') as column}
     <TableCell 
       key={column}
-      value={record[column]}
+      value={ColumnExtractor.getNestedValue(record, column)}
     />
   {/each}
   <td class="actions-cell">

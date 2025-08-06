@@ -2,7 +2,7 @@
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { genTypeEditorDefs } from '$lib/modules/typeEditor2/controller/genTypeEditorDefs';
+	import { genTypeEditorDefs } from '$lib/modules/typeEditor2/genTypeEditorDefs';
 	import { TypeEditorService } from '$lib/modules/typeEditor';
 	import type { TypeEditorParams } from '$lib/modules/typeEditor';
 	import TypeEditorLayout from '$lib/modules/typeEditor2/components/TypeEditorLayout.svelte';

@@ -1,5 +1,5 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
-import { PinnedCollectionsService } from '../../services/PinnedCollectionsService';
+import { PinnedCollectionsService } from '../../services/CollectionService/PinnedCollectionsService';
 
 export const createCollectionSidebarState = () => {
 	let collections = $state<CollectionEntity[]>([]);

@@ -2,7 +2,7 @@
 	import { ChevronDown, ChevronRight, Database, FileText, Users } from 'lucide-svelte';
 	import type { PocketBaseRecord } from '../types';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
-	import { PinnedCollectionsService } from '../services/PinnedCollectionsService';
+	import { PinnedCollectionsService } from '../services/CollectionService/PinnedCollectionsService';
 	
 	interface Props {
 		// Collection data

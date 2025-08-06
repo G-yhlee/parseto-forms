@@ -1,8 +1,8 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
-import { genCommonDefs } from '../common/commonDefs';
-import { genCollectionSidebarDefs } from '../components/CollectionSidebar/controller';
-import { genRecordListDefs } from '../components/RecordList/controller';
-import { genJsonEditorDefs } from '../components/JsonEditorWithDefs/controller';
+import { genCommonDefs } from './common/commonDefs';
+import { genCollectionSidebarDefs } from './components/CollectionSidebar/controller';
+import { genRecordListDefs } from './components/RecordList/controller';
+import { genJsonEditorDefs } from './components/JsonEditorWithDefs/controller';
 
 export const genTypeEditorDefs = () => {
 	// Component definitions

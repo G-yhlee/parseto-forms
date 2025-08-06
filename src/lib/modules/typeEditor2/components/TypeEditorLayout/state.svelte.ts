@@ -25,7 +25,7 @@ export interface TypeEditorLayoutProps {
 export const createTypeEditorLayoutState = () => {
 	// UI states for sidebar
 	let collectionsExpanded = $state(true);
-	let expandedCollections = new SvelteSet<string>();
+	let expandedCollections = $state(new Set<string>());
 	let pinUpdateTrigger = $state(0);
 	
 	// Derived states
@@ -67,19 +67,20 @@ export const createTypeEditorLayoutState = () => {
 		},
 		
 		toggleCollectionRecords: (collectionId: string) => {
-			const newSet = new SvelteSet(expandedCollections);
-			if (expandedCollections.has(collectionId)) {
+			const wasExpanded = expandedCollections.has(collectionId);
+			const newSet = new Set(expandedCollections);
+			if (wasExpanded) {
 				newSet.delete(collectionId);
 			} else {
 				newSet.add(collectionId);
 			}
 			expandedCollections = newSet;
-			return !expandedCollections.has(collectionId); // 반환값: 새로 펼쳐졌는지 여부
+			return !wasExpanded; // 반환값: 새로 펼쳐졌는지 여부
 		},
 		
 		addExpandedCollection: (collectionId: string) => {
 			if (!expandedCollections.has(collectionId)) {
-				const newSet = new SvelteSet(expandedCollections);
+				const newSet = new Set(expandedCollections);
 				newSet.add(collectionId);
 				expandedCollections = newSet;
 			}

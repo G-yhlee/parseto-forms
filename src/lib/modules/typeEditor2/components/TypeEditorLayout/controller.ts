@@ -95,8 +95,8 @@ export const genTypeEditorLayoutDefs = (props: TypeEditorLayoutProps) => {
 			},
 			
 			toggleCollectionRecords: (collection: CollectionEntity) => {
-				const wasExpanded = state.toggleCollectionRecords(collection.id);
-				if (wasExpanded) {
+				const isNowExpanded = state.toggleCollectionRecords(collection.id);
+				if (isNowExpanded) {
 					// 펼칠 때 컬렉션 선택
 					props.onCollectionSelect(collection);
 				}

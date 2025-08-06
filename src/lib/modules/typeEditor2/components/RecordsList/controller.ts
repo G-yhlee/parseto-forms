@@ -1,7 +1,7 @@
 import { createRecordsListState, type RecordsListProps } from './state.svelte';
 import type { PocketBaseRecord } from '../../types';
 
-export type { RecordsListProps };
+export type { RecordsListProps } from './state.svelte';
 
 export const genRecordsListDefs = (props: RecordsListProps) => {
 	const state = createRecordsListState();

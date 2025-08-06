@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Container } from '$lib/infrastructure/di/Container';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
+	import { PinnedCollectionsService } from '../services/PinnedCollectionsService';
 
 	interface Props {
 		onCollectionSelect?: (collection: string) => void;
@@ -9,9 +10,34 @@
 
 	const { onCollectionSelect }: Props = $props();
 
-	let collections = $state<CollectionEntity[]>([]);
+	let allCollections = $state<CollectionEntity[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+
+	// 고정된 컬렉션과 정렬된 컬렉션을 derived로 계산
+	let sortedData = $derived.by(() => {
+		// 브라우저에서만 pinned 정보 로드
+		const pinnedIds = typeof window !== 'undefined' 
+			? PinnedCollectionsService.getPinnedCollections() 
+			: new Set<string>();
+		
+		const pinned: CollectionEntity[] = [];
+		const unpinned: CollectionEntity[] = [];
+		
+		allCollections.forEach(collection => {
+			if (pinnedIds.has(collection.id)) {
+				pinned.push(collection);
+			} else {
+				unpinned.push(collection);
+			}
+		});
+		
+		// 각 그룹 내에서 알파벳 순으로 정렬
+		pinned.sort((a, b) => a.name.localeCompare(b.name));
+		unpinned.sort((a, b) => a.name.localeCompare(b.name));
+		
+		return { collections: [...pinned, ...unpinned], pinnedIds };
+	});
 
 	// 컬렉션 로드
 	async function loadCollections() {
@@ -19,7 +45,7 @@
 			loading = true;
 			error = null;
 			const container = Container.getInstance();
-			collections = await container.collectionRepository.findAll();
+			allCollections = await container.collectionRepository.findAll();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load collections';
 			console.error('Failed to load collections:', err);
@@ -36,6 +62,17 @@
 			// 기본적으로 해당 컬렉션의 첫 번째 레코드로 이동
 			goto(`/typeEditor?collection=${collection.id}`);
 		}
+	}
+
+	// 고정/고정해제 토글
+	function togglePin(event: Event, collectionId: string) {
+		event.stopPropagation(); // 카드 클릭 이벤트 방지
+		
+		// localStorage 업데이트하면 derived가 자동으로 재계산됨
+		PinnedCollectionsService.togglePin(collectionId);
+		
+		// 강제로 재계산을 위해 allCollections를 다시 설정
+		allCollections = [...allCollections];
 	}
 
 	// 레코드 개수 표시용 포맷팅
@@ -82,7 +119,7 @@
 				<p>{error}</p>
 				<button class="btn btn-primary" onclick={loadCollections}> Retry </button>
 			</div>
-		{:else if collections.length === 0}
+		{:else if sortedData.collections.length === 0}
 			<div class="empty-state">
 				<div class="empty-icon">📭</div>
 				<h3>No Collections Found</h3>
@@ -90,8 +127,22 @@
 			</div>
 		{:else}
 			<div class="collection-grid">
-				{#each collections as collection}
-					<button class="collection-card" onclick={() => handleCollectionSelect(collection)}>
+				{#each sortedData.collections as collection}
+					<div
+						class="collection-card {sortedData.pinnedIds.has(collection.id) ? 'pinned' : ''}"
+						onclick={() => handleCollectionSelect(collection)}
+						role="button"
+						tabindex="0"
+					>
+						<button
+							class="pin-button"
+							onclick={(e) => togglePin(e, collection.id)}
+							title={sortedData.pinnedIds.has(collection.id) ? 'Unpin collection' : 'Pin collection'}
+							type="button"
+						>
+							{sortedData.pinnedIds.has(collection.id) ? '📌' : '📍'}
+						</button>
+
 						<div class="card-header">
 							<div class="collection-icon">
 								{getCollectionIcon(collection.type)}
@@ -128,7 +179,7 @@
 						<div class="card-footer">
 							<span class="select-text">Click to edit records →</span>
 						</div>
-					</button>
+					</div>
 				{/each}
 			</div>
 		{/if}
@@ -248,11 +299,56 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		position: relative;
 	}
 
 	.collection-card:hover {
 		transform: translateY(-4px);
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+	}
+
+	.collection-card.pinned {
+		border: 2px solid #667eea;
+		box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+	}
+
+	.collection-card.pinned:hover {
+		box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+	}
+
+	.pin-button {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		background: rgba(255, 255, 255, 0.9);
+		border: 2px solid #e5e7eb;
+		border-radius: 8px;
+		width: 40px;
+		height: 40px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		transition: all 0.2s;
+		font-size: 1.25rem;
+		z-index: 10;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	}
+
+	.pin-button:hover {
+		background: #f3f4f6;
+		border-color: #d1d5db;
+		transform: scale(1.1);
+	}
+
+	.collection-card.pinned .pin-button {
+		background: #667eea;
+		border-color: #667eea;
+	}
+
+	.collection-card.pinned .pin-button:hover {
+		background: #5a67d8;
+		border-color: #5a67d8;
 	}
 
 	.card-header {

@@ -56,9 +56,13 @@ export class TypeEditorService {
   }
 
   /**
-   * 컬렉션의 레코드 리스트 로드
+   * 컬렉션의 레코드 리스트 로드 (필터와 정렬 옵션 포함)
    */
-  static async loadRecordList(collectionIdOrName: string): Promise<PocketBaseRecord[]> {
+  static async loadRecordList(
+    collectionIdOrName: string, 
+    filter?: string, 
+    sort?: string
+  ): Promise<PocketBaseRecord[]> {
     try {
       // Collection ID인지 Name인지 확인하고 Name으로 변환
       let collectionName = collectionIdOrName;
@@ -73,12 +77,32 @@ export class TypeEditorService {
         collectionName = name;
       }
       
-      const records = await this.container.recordRepository.findByCollection(collectionName);
+      // 필터와 정렬이 있으면 PocketBase 쿼리 옵션 구성
+      const options: any = {};
+      if (filter && filter.trim()) {
+        options.filter = filter;
+      }
+      if (sort && sort.trim()) {
+        options.sort = sort;
+      }
+      
+      // 레코드 로드 (필터와 정렬 옵션과 함께)
+      const records = Object.keys(options).length > 0 
+        ? await this.container.recordRepository.findByCollectionWithOptions(collectionName, options)
+        : await this.container.recordRepository.findByCollection(collectionName);
+      
       return records as PocketBaseRecord[];
     } catch (error) {
       console.error('Failed to load record list:', error);
       return [];
     }
+  }
+
+  /**
+   * 기존 메서드 호환성을 위한 오버로드
+   */
+  static async loadRecordListSimple(collectionIdOrName: string): Promise<PocketBaseRecord[]> {
+    return this.loadRecordList(collectionIdOrName);
   }
 
   /**

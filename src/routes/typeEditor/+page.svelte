@@ -18,13 +18,14 @@
 	let params: TypeEditorParams | null = null;
 	let mounted = false;
 	let isEditMode = $state(false);
+	let initializing = $state(false);
 
-	// 초기 URL 파라미터 처리만 하고 이후 URL 변경은 무시
-	let initialLoad = true;
+	// URL 변경 감지 및 처리 - 초기화 완료 후에만 실행
+	let lastProcessedUrl = '';
 	$effect(() => {
-		const url = $page.url;
-		if (mounted && initialLoad) {
-			initialLoad = false;
+		const currentUrl = $page.url.toString();
+		if (mounted && !initializing && currentUrl !== lastProcessedUrl) {
+			lastProcessedUrl = currentUrl;
 			handleUrlChange();
 		}
 	});
@@ -51,19 +52,34 @@
 		}
 	}
 
-	// 데이터 로드 함수
+	// 데이터 로드 함수 - 순차 실행으로 안정성 보장
 	async function loadData(params: TypeEditorParams) {
 		console.log('loadData: Loading data for params:', params);
 		
-		// 레코드 리스트와 현재 레코드를 병렬로 로드
-		await Promise.all([
-			store.loadRecordList(params.collection),
-			store.loadRecord(params)
-		]);
-		
-		// 선택된 컬렉션 설정
-		await updateSelectedCollection(params.collection);
-		console.log('loadData: Data loading completed');
+		try {
+			// 1. 먼저 선택된 컬렉션 설정 (ID 또는 이름으로 찾기)
+			console.log('loadData: Setting selected collection');
+			await updateSelectedCollection(params.collection);
+			
+			if (!store.selectedCollection) {
+				console.error('loadData: Failed to set selected collection');
+				return;
+			}
+			
+			// 2. 레코드 리스트 로드
+			console.log('loadData: Loading record list for collection:', store.selectedCollection.name);
+			await store.loadRecordListWithOptions(params.collection, params.filter, params.sort);
+			
+			// 3. 특정 레코드 로드
+			console.log('loadData: Loading specific record:', params.recordId);
+			await store.loadRecord(params);
+			
+			console.log('loadData: Data loading completed successfully');
+			console.log('loadData: Selected collection:', store.selectedCollection?.id, store.selectedCollection?.name);
+			console.log('loadData: Current record:', store.record?.id);
+		} catch (error) {
+			console.error('loadData: Error loading data:', error);
+		}
 	}
 
 	// 컬렉션만 있는 경우
@@ -83,58 +99,123 @@
 		}
 	}
 
-	// 선택된 컬렉션 업데이트
-	async function updateSelectedCollection(collectionId: string) {
+	// 선택된 컬렉션 업데이트 (ID 또는 이름으로)
+	async function updateSelectedCollection(collectionIdOrName: string) {
 		if (store.collections.length === 0) {
 			await store.loadCollections();
 		}
-		const collection = store.collections.find(c => c.id === collectionId);
+		
+		// ID 또는 이름으로 컬렉션 찾기
+		const collection = store.collections.find(c => 
+			c.id === collectionIdOrName || c.name === collectionIdOrName
+		);
+		
 		if (collection && (!store.selectedCollection || store.selectedCollection.id !== collection.id)) {
+			console.log('updateSelectedCollection: Setting selected collection:', collection.name);
 			store.setSelectedCollection(collection);
+		} else if (!collection) {
+			console.warn('updateSelectedCollection: Collection not found for:', collectionIdOrName);
 		}
 	}
 
 	onMount(async () => {
 		console.log('onMount: Starting...');
-		await store.loadCollections();
-		console.log('onMount: Collections loaded, setting mounted = true');
-		mounted = true;
+		initializing = true;
+		
+		try {
+			// 1. 먼저 컬렉션 목록을 로드
+			console.log('onMount: Loading collections...');
+			await store.loadCollections();
+			console.log('onMount: Collections loaded, count:', store.collections.length);
+			
+			// 2. URL 파라미터 확인 및 초기 데이터 로드
+			const currentUrl = $page.url.toString();
+			lastProcessedUrl = currentUrl;
+			
+			const urlParams = TypeEditorService.parseUrlParams($page.url.searchParams);
+			console.log('onMount: URL params:', urlParams);
+			
+			if (urlParams) {
+				// URL에 collection과 recordId가 모두 있는 경우
+				console.log('onMount: Loading initial data from URL params');
+				params = urlParams;
+				await loadData(urlParams);
+			} else {
+				// collection만 있는 경우
+				const collectionParam = $page.url.searchParams.get('collection');
+				if (collectionParam) {
+					console.log('onMount: Loading collection only from URL:', collectionParam);
+					await loadCollectionOnly(collectionParam);
+				}
+			}
+			
+		} finally {
+			initializing = false;
+			mounted = true;
+			console.log('onMount: Initialization complete');
+		}
 	});
 
 	async function handleSave() {
 		if (!store.selectedCollection || !store.record) {
-			console.error('No collection or record selected');
 			return;
 		}
-		
-		console.log('=== SAVE START ===');
-		console.log('Before save - record data:', JSON.stringify(store.record, null, 2));
-		console.log('Saving to collection:', store.selectedCollection.name);
 		
 		const result = await store.saveRecord(store.selectedCollection.name, store.record.id);
 		
 		if (result.success) {
-			console.log('=== SAVE SUCCESS ===');
-			console.log('After save - record data:', JSON.stringify(result.record, null, 2));
 			alert('✓ Record saved successfully!');
 		} else {
-			console.error('=== SAVE FAILED ===');
-			console.error('Error:', result.error);
 			alert('⚠️ Failed to save: ' + (result.error || 'Unknown error'));
 		}
 	}
 
 	function handleRecordUpdate(newRecord: any) {
-		store.updateRecord(newRecord);
+		if (store.record) {
+			// 기존 record의 시스템 필드들을 유지하면서 새 데이터로 업데이트
+			const mergedRecord = {
+				...store.record,
+				...newRecord,
+				// 시스템 필드들은 기존 값 유지
+				id: store.record.id,
+				collectionId: store.record.collectionId,
+				collectionName: store.record.collectionName,
+				created: store.record.created,
+				updated: store.record.updated
+			};
+			
+			store.updateRecord(mergedRecord);
+		} else {
+			store.updateRecord(newRecord);
+		}
 	}
 
 	function handleRecordSelect(recordId: string) {
 		if (!store.selectedCollection) return;
 		
-		// 직접 레코드 로드 - collection name 사용
+		// 현재 선택된 레코드와 같으면 URL 업데이트 생략
+		const currentRecordId = $page.url.searchParams.get('recordId');
+		if (currentRecordId === recordId) return;
+		
+		// URL 업데이트
+		const newUrl = new URL($page.url);
+		newUrl.searchParams.set('collection', store.selectedCollection.id);
+		newUrl.searchParams.set('recordId', recordId);
+		
+		// 기존 filter, sort 파라미터 유지
+		const currentFilter = $page.url.searchParams.get('filter');
+		const currentSort = $page.url.searchParams.get('sort');
+		if (currentFilter) newUrl.searchParams.set('filter', currentFilter);
+		if (currentSort) newUrl.searchParams.set('sort', currentSort);
+		
+		goto(newUrl.toString(), { replaceState: true });
+		
+		// 레코드 로드
 		const params = {
 			collection: store.selectedCollection!.name,
-			recordId: recordId
+			recordId: recordId,
+			filter: currentFilter || undefined,
+			sort: currentSort || undefined
 		};
 		store.loadRecord(params);
 	}
@@ -143,9 +224,34 @@
 		// 이미 선택된 컴렉션이면 아무것도 하지 않음
 		if (store.selectedCollection?.id === collection.id) return;
 		
-		// 직접 스토어 업데이트만 - URL 변경 없이
+		// URL에서 현재 컬렉션 확인 - 이미 같으면 URL 업데이트 생략
+		const currentCollection = $page.url.searchParams.get('collection');
+		if (currentCollection === collection.id) {
+			// URL은 같지만 스토어 상태가 다를 수 있으므로 스토어만 업데이트
+			store.setSelectedCollection(collection);
+			return;
+		}
+		
+		// URL 업데이트 (컬렉션만 변경, 레코드 ID는 제거)
+		const newUrl = new URL($page.url);
+		newUrl.searchParams.set('collection', collection.id);
+		newUrl.searchParams.delete('recordId'); // 컬렉션 변경 시 레코드 ID 제거
+		
+		// 기존 filter, sort 파라미터는 유지
+		const currentFilter = $page.url.searchParams.get('filter');
+		const currentSort = $page.url.searchParams.get('sort');
+		
+		goto(newUrl.toString(), { replaceState: true });
+		
+		// 스토어 업데이트
 		store.setSelectedCollection(collection);
-		store.loadRecordList(collection.name); // ID 대신 Name 사용
+		
+		// 필터와 정렬 옵션과 함께 레코드 리스트 로드
+		if (currentFilter || currentSort) {
+			store.loadRecordListWithOptions(collection.name, currentFilter || undefined, currentSort || undefined);
+		} else {
+			store.loadRecordList(collection.name);
+		}
 	}
 </script>
 

@@ -2,6 +2,7 @@
 	import { ChevronDown, ChevronRight, Database, FileText, Users } from 'lucide-svelte';
 	import type { PocketBaseRecord } from '../types';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
+	import { PinnedCollectionsService } from '../services/PinnedCollectionsService';
 
 	interface Props {
 		collections: CollectionEntity[];
@@ -29,6 +30,35 @@
 
 	let collectionsExpanded = $state(true);
 	let expandedCollections = $state<Set<string>>(new Set());
+	let pinUpdateTrigger = $state(0); // 핀 상태 변경을 감지하기 위한 트리거
+
+	// 고정된 컬렉션과 정렬된 컬렉션을 derived로 한번에 계산
+	let sortedCollections = $derived.by(() => {
+		// pinUpdateTrigger를 참조하여 핀 상태 변경 시 재계산되도록 함
+		pinUpdateTrigger;
+		
+		// 브라우저에서만 pinned 정보 로드
+		const pinnedIds = typeof window !== 'undefined' 
+			? PinnedCollectionsService.getPinnedCollections() 
+			: new Set<string>();
+		
+		const pinned: CollectionEntity[] = [];
+		const unpinned: CollectionEntity[] = [];
+		
+		collections.forEach(collection => {
+			if (pinnedIds.has(collection.id)) {
+				pinned.push(collection);
+			} else {
+				unpinned.push(collection);
+			}
+		});
+		
+		// 각 그룹 내에서 알파벳 순으로 정렬
+		pinned.sort((a, b) => a.name.localeCompare(b.name));
+		unpinned.sort((a, b) => a.name.localeCompare(b.name));
+		
+		return { collections: [...pinned, ...unpinned], pinnedIds };
+	});
 
 	function toggleCollections() {
 		collectionsExpanded = !collectionsExpanded;
@@ -36,31 +66,28 @@
 
 	function toggleCollectionRecords(collection: CollectionEntity) {
 		const collectionId = collection.id;
-
+		
+		// 단순하게 토글만
+		const newSet = new Set(expandedCollections);
 		if (expandedCollections.has(collectionId)) {
-			// 접기
-			expandedCollections.delete(collectionId);
-			expandedCollections = new Set(expandedCollections);
+			newSet.delete(collectionId);
 		} else {
-			// 펼치기 - 단순히 UI 상태만 변경, API 호출은 route page에서 처리
-			expandedCollections.add(collectionId);
-			expandedCollections = new Set(expandedCollections);
-
-			// 컬렉션 선택도 동시에 실행
+			newSet.add(collectionId);
+			// 펼칠 때 컬렉션 선택
 			onCollectionSelect(collection);
 		}
+		expandedCollections = newSet;
 	}
 
 	function handleCollectionClick(collection: CollectionEntity) {
-		console.log('Sidebar: Collection clicked:', collection.name, collection.id);
-
-		// 단순하게: 컬렉션 선택만 처리
+		// 컬렉션 선택
 		onCollectionSelect(collection);
-
-		// 자동으로 펼치기
+		
+		// 자동 펼치기 (이미 펼쳐져 있으면 그대로 유지)
 		if (!expandedCollections.has(collection.id)) {
-			expandedCollections.add(collection.id);
-			expandedCollections = new Set(expandedCollections);
+			const newSet = new Set(expandedCollections);
+			newSet.add(collection.id);
+			expandedCollections = newSet;
 		}
 	}
 
@@ -68,12 +95,26 @@
 		onRecordSelect(record.id);
 	}
 
-	// 선택된 컬렉션 펼치기 로직 단순화 (리액티브 루프 방지)
+	// 선택된 컬렉션 자동 펼치기
 	$effect(() => {
 		if (selectedCollection && !expandedCollections.has(selectedCollection.id)) {
-			expandedCollections = new Set([...expandedCollections, selectedCollection.id]);
+			console.log('Auto-expanding selected collection:', selectedCollection.id);
+			const newSet = new Set(expandedCollections);
+			newSet.add(selectedCollection.id);
+			expandedCollections = newSet;
 		}
 	});
+
+	// 핀 토글 기능
+	function togglePin(event: Event, collectionId: string) {
+		event.stopPropagation(); // 컬렉션 클릭 이벤트 방지
+		
+		PinnedCollectionsService.togglePin(collectionId);
+		
+		// derived 재계산을 트리거
+		pinUpdateTrigger = pinUpdateTrigger + 1;
+	}
+
 
 	function getCollectionIcon(type: string): any {
 		switch (type) {
@@ -163,7 +204,7 @@
 					</div>
 				{:else}
 					<div class="collection-list">
-						{#each collections as collection}
+						{#each sortedCollections.collections as collection}
 							{@const IconComponent = getCollectionIcon(collection.type)}
 							{@const isExpanded = expandedCollections.has(collection.id)}
 							{@const isSelectedCollection = selectedCollection?.id === collection.id}
@@ -181,7 +222,9 @@
 											<IconComponent size={16} />
 										</div>
 										<div class="collection-info">
-											<div class="collection-name">{collection.name}</div>
+											<div class="collection-name">
+												{collection.name}
+											</div>
 											<div class="collection-meta">
 												<span class="collection-type">{collection.type}</span>
 												<!-- <span class="record-count">{collection.recordCount || 0} records</span> -->
@@ -190,6 +233,15 @@
 										{#if selectedCollection?.id === collection.id}
 											<div class="active-indicator"></div>
 										{/if}
+									</button>
+
+									<!-- Pin Button -->
+									<button
+										class="pin-btn"
+										onclick={(e) => togglePin(e, collection.id)}
+										title={sortedCollections.pinnedIds.has(collection.id) ? 'Unpin collection' : 'Pin collection'}
+									>
+										{sortedCollections.pinnedIds.has(collection.id) ? '📌' : '📍'}
 									</button>
 
 									<!-- Toggle Records Button -->
@@ -390,6 +442,27 @@
 		gap: 0.75rem;
 	}
 
+	.pin-btn {
+		flex-shrink: 0;
+		background: none;
+		border: none;
+		padding: 0.375rem;
+		border-radius: 4px;
+		cursor: pointer;
+		color: #6b7280;
+		transition: all 0.2s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.875rem;
+	}
+
+	.pin-btn:hover {
+		background: #f3f4f6;
+		color: #374151;
+		transform: scale(1.1);
+	}
+
 	.toggle-records-btn {
 		flex-shrink: 0;
 		background: none;
@@ -436,6 +509,15 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.pin-indicator {
+		font-size: 0.75rem;
+		opacity: 0.8;
+		flex-shrink: 0;
 	}
 
 	.collection-meta {

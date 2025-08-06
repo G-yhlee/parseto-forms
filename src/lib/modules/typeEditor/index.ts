@@ -11,6 +11,7 @@ export { default as TypeEditorSidebar } from './components/TypeEditorSidebar.sve
 
 // 서비스
 export { TypeEditorService } from './services/TypeEditorService';
+export { PinnedCollectionsService } from './services/PinnedCollectionsService';
 
 // 스토어
 export { createTypeEditorStore } from './stores/typeEditorStore.svelte';

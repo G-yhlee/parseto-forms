@@ -31,6 +31,7 @@
 
 	// 값 편집 시작
 	function startEditValue(key: string, value: any) {
+		console.log('STEP 1: startEditValue - key:', key, 'value:', value);
 		editingValue = key;
 		editValueValue = JSON.stringify(value);
 	}

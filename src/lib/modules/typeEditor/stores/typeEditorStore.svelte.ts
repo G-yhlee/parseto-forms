@@ -131,6 +131,26 @@ export const createTypeEditorStore = () => {
 			}
 		},
 
+		async loadRecordListWithOptions(collection: string, filter?: string, sort?: string) {
+			// 중복 로딩 방지
+			if (listLoading) {
+				console.log('Store: Already loading record list, skipping...');
+				return;
+			}
+
+			console.log('Store: Loading record list for collection:', collection, 'with filter:', filter, 'sort:', sort);
+			listLoading = true;
+			try {
+				recordList = await TypeEditorService.loadRecordList(collection, filter, sort);
+				console.log('Store: Loaded', recordList.length, 'records');
+			} catch (error) {
+				console.error('Store: Failed to load record list:', error);
+				recordList = [];
+			} finally {
+				listLoading = false;
+			}
+		},
+
 		async loadRecord(params: TypeEditorParams) {
 			state.loading = true;
 			state.error = null;
@@ -153,7 +173,11 @@ export const createTypeEditorStore = () => {
 		},
 
 		updateRecord(newRecord: PocketBaseRecord) {
-			state.record = newRecord;
+			// 완전히 새로운 state 객체 생성으로 reactivity 보장
+			state = {
+				...state,
+				record: JSON.parse(JSON.stringify(newRecord))
+			};
 			this.checkChanges();
 			this.generateTypes();
 		},
@@ -168,11 +192,14 @@ export const createTypeEditorStore = () => {
 		async saveRecord(collection: string, recordId: string) {
 			if (!state.record) return { success: false, error: 'No record to save' };
 
+			// 현재 record의 복사본 생성 (저장 중에 변경되는 것 방지)
+			const recordToSave = JSON.parse(JSON.stringify(state.record));
+
 			state.saving = true;
 			state.error = null;
 
 			try {
-				const result = await TypeEditorService.saveRecord(collection, recordId, state.record);
+				const result = await TypeEditorService.saveRecord(collection, recordId, recordToSave);
 
 				if (result.success && result.record) {
 					// 업데이트된 레코드로 상태 업데이트
@@ -234,7 +261,8 @@ export const createTypeEditorStore = () => {
 				return;
 			}
 
-			state.hasChanges = TypeEditorService.hasRecordChanged(state.originalRecord, state.record);
+			const hasChanged = TypeEditorService.hasRecordChanged(state.originalRecord, state.record);
+			state.hasChanges = hasChanged;
 		},
 
 		clearError() {

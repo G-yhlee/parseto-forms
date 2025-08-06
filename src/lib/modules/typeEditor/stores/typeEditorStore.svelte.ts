@@ -249,12 +249,18 @@ export const createTypeEditorStore = () => {
 		},
 
 		checkChanges() {
+			console.log('=== checkChanges ===');
+			console.log('state.record exists:', !!state.record);
+			console.log('state.originalRecord exists:', !!state.originalRecord);
+			
 			if (!state.record || !state.originalRecord) {
+				console.log('checkChanges: Missing record or originalRecord, setting hasChanges = false');
 				state.hasChanges = false;
 				return;
 			}
 
 			const hasChanged = TypeEditorService.hasRecordChanged(state.originalRecord, state.record);
+			console.log('hasChanged result:', hasChanged);
 			state.hasChanges = hasChanged;
 		},
 

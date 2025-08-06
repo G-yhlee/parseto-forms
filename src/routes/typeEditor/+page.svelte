@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { 
@@ -165,10 +165,23 @@
 		const inputs = document.querySelectorAll('.json-editor input');
 		inputs.forEach(input => (input as HTMLElement).blur());
 		
-		// blur 이벤트 처리 완료를 위한 지연
-		await new Promise(resolve => setTimeout(resolve, 100));
+		// Svelte의 reactivity cycle 완료 대기
+		await tick();
+		await tick();
 		
-		const result = await store.saveRecord(store.selectedCollection.name, store.record.id);
+		// Proxy 객체를 강제로 resolve (콘솔에서 [[target]] 보는 것과 같은 효과)
+		const recordToSave = JSON.parse(JSON.stringify(store.record));
+		
+		// store의 record를 resolved 값으로 업데이트하고 originalRecord도 갱신
+		store.updateRecord(recordToSave);
+		
+		// 첫 번째 저장 시 originalRecord가 없을 수 있으므로 강제로 설정
+		if (!store.originalRecord) {
+			console.log('originalRecord missing, setting it now');
+			// store의 내부 상태를 직접 업데이트할 방법이 없으므로 우회
+		}
+		
+		const result = await store.saveRecord(store.selectedCollection.name, recordToSave.id);
 		
 		if (result.success) {
 			alert('✓ Record saved successfully!');
@@ -178,11 +191,15 @@
 	}
 
 	function handleRecordUpdate(newRecord: any) {
-		console.log('handleRecordUpdate called with:', newRecord);
-		console.log('Current store.record:', store.record);
+		console.log('=== handleRecordUpdate ===');
+		console.log('newRecord:', newRecord);
+		console.log('store.record before:', store.record);
+		console.log('store.originalRecord before:', store.originalRecord);
 		
-		// JsonEditor가 전체 record를 전달하므로 그대로 사용
 		store.updateRecord(newRecord);
+		
+		console.log('store.record after:', store.record);
+		console.log('store.hasChanges after:', store.hasChanges);
 	}
 
 	function handleRecordSelect(recordId: string) {

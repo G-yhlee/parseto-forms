@@ -77,19 +77,9 @@ export class TypeEditorService {
         collectionName = name;
       }
       
-      // 필터와 정렬이 있으면 PocketBase 쿼리 옵션 구성
-      const options: any = {};
-      if (filter && filter.trim()) {
-        options.filter = filter;
-      }
-      if (sort && sort.trim()) {
-        options.sort = sort;
-      }
-      
-      // 레코드 로드 (필터와 정렬 옵션과 함께)
-      const records = Object.keys(options).length > 0 
-        ? await this.container.recordRepository.findByCollectionWithOptions(collectionName, options)
-        : await this.container.recordRepository.findByCollection(collectionName);
+      // 현재는 필터와 정렬 옵션을 지원하지 않고 기본 로드만 사용
+      // TODO: recordRepository에 옵션 지원 메서드가 추가되면 활성화
+      const records = await this.container.recordRepository.findByCollection(collectionName);
       
       return records as PocketBaseRecord[];
     } catch (error) {

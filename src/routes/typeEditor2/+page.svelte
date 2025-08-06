@@ -2,25 +2,23 @@
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import {
-		TypeEditorLayout,
-		TypeEditorService,
-		createTypeEditorStore,
-		type TypeEditorParams
-	} from '$lib/modules/typeEditor';
-	import JsonEditor from '$lib/modules/typeEditor/components/JsonEditor.svelte';
-	import type { CollectionEntity } from '$lib/domain/entities/Collection';
+	import { genTypeEditorDefs } from '$lib/modules/typeEditor2/controller/genTypeEditorDefs';
+	import { TypeEditorService } from '$lib/modules/typeEditor';
+	import type { TypeEditorParams } from '$lib/modules/typeEditor';
+	import TypeEditorLayout from '$lib/modules/typeEditor2/components/TypeEditorLayout.svelte';
+	import JsonEditor from '$lib/modules/typeEditor2/components/JsonEditor.svelte';
 
-	// 스토어 생성
-	const store = createTypeEditorStore();
+	// Generate definitions
+	const defs = genTypeEditorDefs();
+	const { datas, states, actions } = defs;
 
-	let params: TypeEditorParams | null = null;
+	// Local state for page management
 	let mounted = false;
 	let isEditMode = $state(false);
 	let initializing = $state(false);
+	let lastProcessedUrl = '';
 
 	// URL 변경 감지 및 처리 - 초기화 완료 후에만 실행
-	let lastProcessedUrl = '';
 	$effect(() => {
 		const currentUrl = $page.url.toString();
 		if (mounted && !initializing && currentUrl !== lastProcessedUrl) {
@@ -36,7 +34,6 @@
 
 		if (newParams) {
 			console.log('handleUrlChange: Loading data for params:', newParams);
-			params = newParams;
 			await loadData(newParams);
 		} else {
 			const collection = $page.url.searchParams.get('collection');
@@ -44,9 +41,6 @@
 			if (collection) {
 				console.log('handleUrlChange: Loading collection only:', collection);
 				await loadCollectionOnly(collection);
-			} else {
-				console.log('handleUrlChange: No params, resetting store');
-				store.reset();
 			}
 		}
 	}
@@ -56,30 +50,23 @@
 		console.log('loadData: Loading data for params:', params);
 
 		try {
-			// 1. 먼저 선택된 컬렉션 설정 (ID 또는 이름으로 찾기)
-			console.log('loadData: Setting selected collection');
-			await updateSelectedCollection(params.collection);
-
-			if (!store.selectedCollection) {
-				console.error('loadData: Failed to set selected collection');
+			// 1. 컬렉션 찾기
+			const collection = datas.collections().find(
+				c => c.id === params.collection || c.name === params.collection
+			);
+			
+			if (!collection) {
+				console.error('loadData: Collection not found:', params.collection);
 				return;
 			}
 
-			// 2. 레코드 리스트 로드
-			console.log('loadData: Loading record list for collection:', store.selectedCollection.name);
-			await store.loadRecordListWithOptions(params.collection, params.filter, params.sort);
+			// 2. 컬렉션 선택 및 레코드 리스트 로드
+			await actions.onCollectionSelect(collection);
 
-			// 3. 특정 레코드 로드
-			console.log('loadData: Loading specific record:', params.recordId);
-			await store.loadRecord(params);
+			// 3. 특정 레코드 선택
+			await actions.onRecordSelect(params.recordId);
 
 			console.log('loadData: Data loading completed successfully');
-			console.log(
-				'loadData: Selected collection:',
-				store.selectedCollection?.id,
-				store.selectedCollection?.name
-			);
-			console.log('loadData: Current record:', store.record?.id);
 		} catch (error) {
 			console.error('loadData: Error loading data:', error);
 		}
@@ -88,8 +75,17 @@
 	// 컬렉션만 있는 경우
 	async function loadCollectionOnly(collectionId: string) {
 		console.log('loadCollectionOnly: Loading collection:', collectionId);
-		await store.loadRecordList(collectionId);
-		await updateSelectedCollection(collectionId);
+		
+		const collection = datas.collections().find(
+			c => c.id === collectionId || c.name === collectionId
+		);
+		
+		if (!collection) {
+			console.error('loadCollectionOnly: Collection not found:', collectionId);
+			return;
+		}
+
+		await actions.onCollectionSelect(collection);
 
 		// 첫 번째 레코드가 있으면 자동 선택
 		const firstRecordId = await TypeEditorService.getFirstRecordId(collectionId);
@@ -102,37 +98,16 @@
 		}
 	}
 
-	// 선택된 컬렉션 업데이트 (ID 또는 이름으로)
-	async function updateSelectedCollection(collectionIdOrName: string) {
-		if (store.collections.length === 0) {
-			await store.loadCollections();
-		}
-
-		// ID 또는 이름으로 컬렉션 찾기
-		const collection = store.collections.find(
-			(c) => c.id === collectionIdOrName || c.name === collectionIdOrName
-		);
-
-		if (
-			collection &&
-			(!store.selectedCollection || store.selectedCollection.id !== collection.id)
-		) {
-			console.log('updateSelectedCollection: Setting selected collection:', collection.name);
-			store.setSelectedCollection(collection);
-		} else if (!collection) {
-			console.warn('updateSelectedCollection: Collection not found for:', collectionIdOrName);
-		}
-	}
-
 	onMount(async () => {
 		console.log('onMount: Starting...');
 		initializing = true;
 
 		try {
-			// 1. 먼저 컬렉션 목록을 로드
-			console.log('onMount: Loading collections...');
-			await store.loadCollections();
-			console.log('onMount: Collections loaded, count:', store.collections.length);
+			// 1. 컬렉션 로딩 대기
+			while (states.collectionsLoading()) {
+				await new Promise(resolve => setTimeout(resolve, 100));
+			}
+			console.log('onMount: Collections loaded, count:', datas.collections().length);
 
 			// 2. URL 파라미터 확인 및 초기 데이터 로드
 			const currentUrl = $page.url.toString();
@@ -144,7 +119,6 @@
 			if (urlParams) {
 				// URL에 collection과 recordId가 모두 있는 경우
 				console.log('onMount: Loading initial data from URL params');
-				params = urlParams;
 				await loadData(urlParams);
 			} else {
 				// collection만 있는 경우
@@ -162,7 +136,7 @@
 	});
 
 	async function handleSave() {
-		if (!store.selectedCollection || !store.record) {
+		if (!datas.selectedCollection() || !datas.currentRecord()) {
 			return;
 		}
 
@@ -174,19 +148,7 @@
 		await tick();
 		await tick();
 
-		// Proxy 객체를 강제로 resolve (콘솔에서 [[target]] 보는 것과 같은 효과)
-		const recordToSave = JSON.parse(JSON.stringify(store.record));
-
-		// store의 record를 resolved 값으로 업데이트하고 originalRecord도 갱신
-		store.updateRecord(recordToSave);
-
-		// 첫 번째 저장 시 originalRecord가 없을 수 있으므로 강제로 설정
-		if (!store.originalRecord) {
-			console.log('originalRecord missing, setting it now');
-			// store의 내부 상태를 직접 업데이트할 방법이 없으므로 우회
-		}
-
-		const result = await store.saveRecord(store.selectedCollection.name, recordToSave.id);
+		const result = await actions.onSave();
 
 		if (result.success) {
 			alert('✓ Record saved successfully!');
@@ -195,20 +157,8 @@
 		}
 	}
 
-	function handleRecordUpdate(newRecord: any) {
-		console.log('=== handleRecordUpdate ===');
-		console.log('newRecord:', newRecord);
-		console.log('store.record before:', store.record);
-		console.log('store.originalRecord before:', store.originalRecord);
-
-		store.updateRecord(newRecord);
-
-		console.log('store.record after:', store.record);
-		console.log('store.hasChanges after:', store.hasChanges);
-	}
-
 	function handleRecordSelect(recordId: string) {
-		if (!store.selectedCollection) return;
+		if (!datas.selectedCollection()) return;
 
 		// 현재 선택된 레코드와 같으면 URL 업데이트 생략
 		const currentRecordId = $page.url.searchParams.get('recordId');
@@ -216,7 +166,7 @@
 
 		// URL 업데이트
 		const newUrl = new URL($page.url);
-		newUrl.searchParams.set('collection', store.selectedCollection.id);
+		newUrl.searchParams.set('collection', datas.selectedCollection()!.id);
 		newUrl.searchParams.set('recordId', recordId);
 
 		// 기존 filter, sort 파라미터 유지
@@ -228,24 +178,18 @@
 		goto(newUrl.toString(), { replaceState: true });
 
 		// 레코드 로드
-		const params = {
-			collection: store.selectedCollection!.name,
-			recordId: recordId,
-			filter: currentFilter || undefined,
-			sort: currentSort || undefined
-		};
-		store.loadRecord(params);
+		actions.onRecordSelect(recordId);
 	}
 
-	function handleCollectionSelect(collection: CollectionEntity) {
+	function handleCollectionSelect(collection: any) {
 		// 이미 선택된 컴렉션이면 아무것도 하지 않음
-		if (store.selectedCollection?.id === collection.id) return;
+		if (datas.selectedCollection()?.id === collection.id) return;
 
 		// URL에서 현재 컬렉션 확인 - 이미 같으면 URL 업데이트 생략
 		const currentCollection = $page.url.searchParams.get('collection');
 		if (currentCollection === collection.id) {
-			// URL은 같지만 스토어 상태가 다를 수 있으므로 스토어만 업데이트
-			store.setSelectedCollection(collection);
+			// URL은 같지만 상태가 다를 수 있으므로 선택만 업데이트
+			actions.onCollectionSelect(collection);
 			return;
 		}
 
@@ -254,25 +198,10 @@
 		newUrl.searchParams.set('collection', collection.id);
 		newUrl.searchParams.delete('recordId'); // 컬렉션 변경 시 레코드 ID 제거
 
-		// 기존 filter, sort 파라미터는 유지
-		const currentFilter = $page.url.searchParams.get('filter');
-		const currentSort = $page.url.searchParams.get('sort');
-
 		goto(newUrl.toString(), { replaceState: true });
 
-		// 스토어 업데이트
-		store.setSelectedCollection(collection);
-
-		// 필터와 정렬 옵션과 함께 레코드 리스트 로드
-		if (currentFilter || currentSort) {
-			store.loadRecordListWithOptions(
-				collection.name,
-				currentFilter || undefined,
-				currentSort || undefined
-			);
-		} else {
-			store.loadRecordList(collection.name);
-		}
+		// 컬렉션 선택
+		actions.onCollectionSelect(collection);
 	}
 </script>
 
@@ -281,38 +210,38 @@
 </svelte:head>
 
 <TypeEditorLayout
-	collections={store.collections}
-	collectionsLoading={store.collectionsLoading}
-	selectedCollection={store.selectedCollection}
-	recordList={store.recordList}
-	recordListLoading={store.listLoading}
-	currentRecordId={store.record?.id || null}
+	collections={datas.collections()}
+	collectionsLoading={states.collectionsLoading()}
+	selectedCollection={datas.selectedCollection()}
+	recordList={datas.recordList()}
+	recordListLoading={states.recordListLoading()}
+	currentRecordId={states.currentRecordId()}
 	onCollectionSelect={handleCollectionSelect}
 	onRecordSelect={handleRecordSelect}
 >
 	{#snippet children()}
-		{#if store.loading}
+		{#if states.recordListLoading() && !datas.currentRecord()}
 			<div class="loading-state">
 				<div class="spinner"></div>
 				<p>Loading record...</p>
 			</div>
-		{:else if store.error}
+		{:else if datas.error()}
 			<div class="error-state">
 				<div class="error-icon">⚠️</div>
 				<h2>Error</h2>
-				<p>{store.error}</p>
+				<p>{datas.error()}</p>
 				<button class="btn btn-primary" onclick={() => goto('/')}> Go Back </button>
 			</div>
-		{:else if store.record}
+		{:else if datas.currentRecord()}
 			<div class="editor-container">
 				<header class="editor-header">
 					<div class="header-info">
 						<h1>Record Editor</h1>
 						<div class="record-meta">
 							<span class="collection"
-								>Collection: {store.selectedCollection?.name || store.record.collectionName}</span
+								>Collection: {datas.selectedCollection()?.name || datas.currentRecord()!.collectionName}</span
 							>
-							<span class="record-id">ID: {store.record.id}</span>
+							<span class="record-id">ID: {datas.currentRecord()!.id}</span>
 						</div>
 					</div>
 					<div class="header-actions">
@@ -323,9 +252,9 @@
 							<button
 								class="btn btn-primary"
 								onclick={handleSave}
-								disabled={!store.hasChanges || store.saving}
+								disabled={!states.hasChanges() || states.saving()}
 							>
-								{store.saving ? 'Saving...' : 'Save Changes'}
+								{states.saving() ? 'Saving...' : 'Save Changes'}
 							</button>
 						{/if}
 					</div>
@@ -336,15 +265,15 @@
 					<div class="panel data-panel">
 						<div class="panel-header">
 							<h3>Record Data</h3>
-							{#if store.hasChanges}
+							{#if states.hasChanges()}
 								<span class="changes-indicator">● Unsaved changes</span>
 							{/if}
 						</div>
 						<div class="panel-content">
 							{#if isEditMode}
 								<div class="editor-view">
-									{#if !store.saving}
-										<JsonEditor data={store.record} onUpdate={handleRecordUpdate} />
+									{#if !states.saving()}
+										<JsonEditor data={datas.currentRecord()} onUpdate={actions.onJsonUpdate} />
 									{:else}
 										<div class="saving-overlay">
 											<div class="spinner"></div>
@@ -354,7 +283,7 @@
 								</div>
 							{:else}
 								<div class="json-view">
-									<pre><code>{JSON.stringify(store.record, null, 2)}</code></pre>
+									<pre><code>{JSON.stringify(datas.currentRecord(), null, 2)}</code></pre>
 								</div>
 							{/if}
 						</div>
@@ -366,15 +295,15 @@
 							<h3>Generated TypeScript</h3>
 							<button
 								class="btn btn-sm btn-secondary"
-								onclick={() => navigator.clipboard.writeText(store.generatedTypes)}
+								onclick={actions.onCopyTypes}
 							>
 								Copy
 							</button>
 						</div>
 						<div class="panel-content">
-							{#if store.generatedTypes}
+							{#if datas.generatedTypes()}
 								<div class="typescript-output">
-									<pre><code>{@html store.highlightedTypes}</code></pre>
+									<pre><code>{@html datas.highlightedTypes()}</code></pre>
 								</div>
 							{:else}
 								<div class="empty-state">
@@ -385,7 +314,7 @@
 					</div>
 				</div>
 			</div>
-		{:else if store.selectedCollection && store.recordList.length > 0}
+		{:else if datas.selectedCollection() && datas.recordList().length > 0}
 			<div class="select-record-state">
 				<div class="placeholder-content">
 					<div class="placeholder-icon">📝</div>
@@ -393,7 +322,7 @@
 					<p>Choose a record from the sidebar to start editing</p>
 				</div>
 			</div>
-		{:else if store.selectedCollection}
+		{:else if datas.selectedCollection()}
 			<div class="empty-collection-state">
 				<div class="placeholder-content">
 					<div class="placeholder-icon">📭</div>

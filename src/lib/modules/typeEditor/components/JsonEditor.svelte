@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Self-import for recursive component
 	import JsonEditor from './JsonEditor.svelte';
-	
+
 	interface Props {
 		data: any;
 		onUpdate: (newData: any) => void;
@@ -9,7 +9,6 @@
 	}
 
 	const { data, onUpdate, path = [] }: Props = $props();
-
 
 	// 편집 상태 관리
 	let editingKey = $state<string | null>(null);
@@ -128,22 +127,17 @@
 								autofocus
 							/>
 						{:else}
-							<span
-								class="key-label"
-								onclick={() => startEditKey(key)}
-								role="button"
-								tabindex="0"
-							>
+							<span class="key-label" onclick={() => startEditKey(key)} role="button" tabindex="0">
 								"{key}"
 							</span>
 						{/if}
 						<span class="colon">:</span>
 					</div>
-					
+
 					<span class="property-value">
 						{#if getType(value) === 'object' || getType(value) === 'array'}
-							<JsonEditor 
-								data={value} 
+							<JsonEditor
+								data={value}
 								onUpdate={(newValue) => {
 									const newData = { ...data };
 									newData[key] = newValue;
@@ -181,8 +175,8 @@
 			{#each data as item, index}
 				<div class="array-item">
 					{#if getType(item) === 'object' || getType(item) === 'array'}
-						<JsonEditor 
-							data={item} 
+						<JsonEditor
+							data={item}
 							onUpdate={(newValue) => {
 								const newData = [...data];
 								newData[index] = newValue;
@@ -199,7 +193,7 @@
 							class="inline-input value-input"
 						/>
 					{:else}
-						<span 
+						<span
 							class="value-label {getType(item)}"
 							onclick={() => startEditArrayValue(index, item)}
 							role="button"
@@ -221,7 +215,8 @@
 
 <style>
 	.json-editor {
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+		font-family:
+			'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 		font-size: 0.875rem;
 		line-height: 1.5;
 		display: block;

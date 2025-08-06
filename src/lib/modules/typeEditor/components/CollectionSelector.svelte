@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { Container } from '$lib/infrastructure/di/Container';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
-	
+
 	interface Props {
 		onCollectionSelect?: (collection: string) => void;
 	}
@@ -34,7 +34,7 @@
 			onCollectionSelect(collection.id);
 		} else {
 			// 기본적으로 해당 컬렉션의 첫 번째 레코드로 이동
-			goto(`/typeeditor?collection=${collection.id}`);
+			goto(`/typeEditor?collection=${collection.id}`);
 		}
 	}
 
@@ -48,10 +48,14 @@
 	// 컬렉션 타입 아이콘
 	function getCollectionIcon(type: string): string {
 		switch (type) {
-			case 'auth': return '👤';
-			case 'base': return '📁';
-			case 'view': return '👁️';
-			default: return '📄';
+			case 'auth':
+				return '👤';
+			case 'base':
+				return '📁';
+			case 'view':
+				return '👁️';
+			default:
+				return '📄';
 		}
 	}
 
@@ -76,9 +80,7 @@
 				<div class="error-icon">⚠️</div>
 				<h3>Error</h3>
 				<p>{error}</p>
-				<button class="btn btn-primary" onclick={loadCollections}>
-					Retry
-				</button>
+				<button class="btn btn-primary" onclick={loadCollections}> Retry </button>
 			</div>
 		{:else if collections.length === 0}
 			<div class="empty-state">
@@ -89,10 +91,7 @@
 		{:else}
 			<div class="collection-grid">
 				{#each collections as collection}
-					<button
-						class="collection-card"
-						onclick={() => handleCollectionSelect(collection)}
-					>
+					<button class="collection-card" onclick={() => handleCollectionSelect(collection)}>
 						<div class="card-header">
 							<div class="collection-icon">
 								{getCollectionIcon(collection.type)}
@@ -102,15 +101,15 @@
 								<p class="collection-id">ID: {collection.id}</p>
 							</div>
 						</div>
-						
+
 						<div class="card-body">
 							<div class="collection-meta">
 								<span class="collection-type">{collection.type}</span>
 								<span class="record-count">
-									{formatRecordCount(collection.recordCount || 0)}
+									<!-- {formatRecordCount(collection.recordCount || 0)} -->
 								</span>
 							</div>
-							
+
 							{#if collection.schema && collection.schema.length > 0}
 								<div class="schema-preview">
 									<p class="schema-label">Fields:</p>
@@ -200,8 +199,12 @@
 	}
 
 	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 
 	.error-icon,

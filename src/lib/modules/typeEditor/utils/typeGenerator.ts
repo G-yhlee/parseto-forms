@@ -4,20 +4,7 @@
  */
 
 import { Pluralizer } from './pluralizer';
-
-export interface TypeAnalysis {
-  name: string;
-  type: string;
-  optional: boolean;
-  description?: string;
-}
-
-export interface GeneratedInterface {
-  name: string;
-  fields: TypeAnalysis[];
-  code: string;
-  nestedInterfaces?: GeneratedInterface[];
-}
+import type { TypeAnalysis, GeneratedInterface } from '../types';
 
 export class TypeGenerator {
   

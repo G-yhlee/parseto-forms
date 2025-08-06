@@ -8,7 +8,7 @@
 		TypeEditorService, 
 		createTypeEditorStore,
 		type TypeEditorParams 
-	} from '$lib/modules/typeeditor';
+	} from '$lib/modules/typeEditor';
 	import JsonEditor from '$lib/modules/typeEditor/components/JsonEditor.svelte';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
 

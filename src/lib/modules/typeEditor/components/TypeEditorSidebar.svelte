@@ -2,7 +2,7 @@
 	import { ChevronDown, ChevronRight, Database, FileText, Users } from 'lucide-svelte';
 	import type { PocketBaseRecord } from '../types';
 	import type { CollectionEntity } from '$lib/domain/entities/Collection';
-	
+
 	interface Props {
 		collections: CollectionEntity[];
 		collectionsLoading: boolean;
@@ -14,7 +14,7 @@
 		onRecordSelect: (recordId: string) => void;
 	}
 
-	const { 
+	const {
 		collections,
 		collectionsLoading,
 		selectedCollection,
@@ -36,7 +36,7 @@
 
 	function toggleCollectionRecords(collection: CollectionEntity) {
 		const collectionId = collection.id;
-		
+
 		if (expandedCollections.has(collectionId)) {
 			// 접기
 			expandedCollections.delete(collectionId);
@@ -45,7 +45,7 @@
 			// 펼치기 - 단순히 UI 상태만 변경, API 호출은 route page에서 처리
 			expandedCollections.add(collectionId);
 			expandedCollections = new Set(expandedCollections);
-			
+
 			// 컬렉션 선택도 동시에 실행
 			onCollectionSelect(collection);
 		}
@@ -53,10 +53,10 @@
 
 	function handleCollectionClick(collection: CollectionEntity) {
 		console.log('Sidebar: Collection clicked:', collection.name, collection.id);
-		
+
 		// 단순하게: 컬렉션 선택만 처리
 		onCollectionSelect(collection);
-		
+
 		// 자동으로 펼치기
 		if (!expandedCollections.has(collection.id)) {
 			expandedCollections.add(collection.id);
@@ -77,10 +77,14 @@
 
 	function getCollectionIcon(type: string): any {
 		switch (type) {
-			case 'auth': return Users;
-			case 'base': return Database;
-			case 'view': return FileText;
-			default: return Database;
+			case 'auth':
+				return Users;
+			case 'base':
+				return Database;
+			case 'view':
+				return FileText;
+			default:
+				return Database;
 		}
 	}
 
@@ -103,17 +107,22 @@
 				}
 			}
 		}
-		
+
 		// 다른 필드에서 표시할 만한 값 찾기
 		for (const [key, value] of Object.entries(record)) {
-			if (key !== 'id' && key !== 'created' && key !== 'updated' && 
-				key !== 'collectionId' && key !== 'collectionName') {
+			if (
+				key !== 'id' &&
+				key !== 'created' &&
+				key !== 'updated' &&
+				key !== 'collectionId' &&
+				key !== 'collectionName'
+			) {
 				if (typeof value === 'string') {
 					return value.substring(0, 30);
 				}
 			}
 		}
-		
+
 		return `Record ${record.id.substring(0, 8)}...`;
 	}
 </script>
@@ -159,7 +168,7 @@
 							{@const isExpanded = expandedCollections.has(collection.id)}
 							{@const isSelectedCollection = selectedCollection?.id === collection.id}
 							{@const records = isSelectedCollection ? recordList : []}
-							
+
 							<div class="collection-group">
 								<!-- Collection Header -->
 								<div class="collection-header">
@@ -175,14 +184,14 @@
 											<div class="collection-name">{collection.name}</div>
 											<div class="collection-meta">
 												<span class="collection-type">{collection.type}</span>
-												<span class="record-count">{collection.recordCount || 0} records</span>
+												<!-- <span class="record-count">{collection.recordCount || 0} records</span> -->
 											</div>
 										</div>
 										{#if selectedCollection?.id === collection.id}
 											<div class="active-indicator"></div>
 										{/if}
 									</button>
-									
+
 									<!-- Toggle Records Button -->
 									<button
 										class="toggle-records-btn"
@@ -196,7 +205,7 @@
 										{/if}
 									</button>
 								</div>
-								
+
 								<!-- Collection Records -->
 								{#if isExpanded}
 									<div class="collection-records">
@@ -207,7 +216,8 @@
 											</div>
 										{:else if records.length === 0}
 											<div class="records-empty">
-												<span>{isSelectedCollection ? 'No records' : 'Select to view records'}</span>
+												<span>{isSelectedCollection ? 'No records' : 'Select to view records'}</span
+												>
 											</div>
 										{:else}
 											<div class="records-list">
@@ -245,7 +255,6 @@
 			</div>
 		{/if}
 	</div>
-
 </div>
 
 <style>
@@ -338,8 +347,12 @@
 	}
 
 	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 
 	.loading-state p,

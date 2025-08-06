@@ -17,12 +17,12 @@ export { createTypeEditorStore } from './stores/typeEditorStore.svelte';
 
 // 타입
 export type {
-  TypeEditorParams,
-  PocketBaseRecord,
-  TypeEditorState,
-  FieldEdit,
-  ValidationError,
-  SaveResult
+	TypeEditorParams,
+	PocketBaseRecord,
+	TypeEditorState,
+	FieldEdit,
+	ValidationError,
+	SaveResult
 } from './types';
 
 // 버전 정보

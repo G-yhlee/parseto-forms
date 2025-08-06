@@ -6,8 +6,8 @@ import type { TypeViewerState, JsonData } from '../types';
 import { TypeViewerService } from '../services/TypeViewerService';
 
 export function createTypeViewerStore() {
-  // 기본 샘플 데이터
-  const defaultJsonInput = `{
+	// 기본 샘플 데이터
+	const defaultJsonInput = `{
   "bookstore": {
     "name": "City Reads",
     "location": "Downtown",
@@ -44,85 +44,99 @@ export function createTypeViewerStore() {
   }
 }`;
 
-  // 상태 초기화
-  let state = $state<TypeViewerState>({
-    jsonInput: defaultJsonInput,
-    jsonError: '',
-    generatedTypes: '',
-    highlightedTypes: '',
-    copySuccess: false,
-    editMode: false,
-    parsedData: null
-  });
+	// 상태 초기화
+	let state = $state<TypeViewerState>({
+		jsonInput: defaultJsonInput,
+		jsonError: '',
+		generatedTypes: '',
+		highlightedTypes: '',
+		copySuccess: false,
+		editMode: false,
+		parsedData: null
+	});
 
-  // 초기 타입 생성
-  const initialResult = TypeViewerService.processJsonInput(defaultJsonInput);
-  if (initialResult.success) {
-    state.parsedData = initialResult.parsedData!;
-    state.generatedTypes = initialResult.generatedTypes!;
-    state.highlightedTypes = initialResult.highlightedTypes!;
-  }
+	// 초기 타입 생성
+	const initialResult = TypeViewerService.processJsonInput(defaultJsonInput);
+	if (initialResult.success) {
+		state.parsedData = initialResult.parsedData!;
+		state.generatedTypes = initialResult.generatedTypes!;
+		state.highlightedTypes = initialResult.highlightedTypes!;
+	}
 
-  return {
-    // 읽기 전용 상태
-    get jsonInput() { return state.jsonInput; },
-    get jsonError() { return state.jsonError; },
-    get generatedTypes() { return state.generatedTypes; },
-    get highlightedTypes() { return state.highlightedTypes; },
-    get copySuccess() { return state.copySuccess; },
-    get editMode() { return state.editMode; },
-    get parsedData() { return state.parsedData; },
+	return {
+		// 읽기 전용 상태
+		get jsonInput() {
+			return state.jsonInput;
+		},
+		get jsonError() {
+			return state.jsonError;
+		},
+		get generatedTypes() {
+			return state.generatedTypes;
+		},
+		get highlightedTypes() {
+			return state.highlightedTypes;
+		},
+		get copySuccess() {
+			return state.copySuccess;
+		},
+		get editMode() {
+			return state.editMode;
+		},
+		get parsedData() {
+			return state.parsedData;
+		},
 
-    // 액션
-    generateTypes() {
-      const result = TypeViewerService.processJsonInput(state.jsonInput);
-      
-      if (result.success) {
-        state.jsonError = '';
-        state.parsedData = result.parsedData!;
-        state.generatedTypes = result.generatedTypes!;
-        state.highlightedTypes = result.highlightedTypes!;
-      } else {
-        state.jsonError = result.error!;
-        state.generatedTypes = '';
-        state.highlightedTypes = '';
-        state.parsedData = null;
-      }
-    },
+		// 액션
+		generateTypes() {
+			const result = TypeViewerService.processJsonInput(state.jsonInput);
 
-    updateJsonInput(newInput: string) {
-      state.jsonInput = newInput;
-      this.generateTypes();
-    },
+			if (result.success) {
+				state.jsonError = '';
+				state.parsedData = result.parsedData!;
+				state.generatedTypes = result.generatedTypes!;
+				state.highlightedTypes = result.highlightedTypes!;
+			} else {
+				state.jsonError = result.error!;
+				state.generatedTypes = '';
+				state.highlightedTypes = '';
+				state.parsedData = null;
+			}
+		},
 
-    updateJsonData(newData: JsonData) {
-      const result = TypeViewerService.updateJsonData(newData);
-      state.parsedData = newData;
-      state.jsonInput = result.jsonInput;
-      state.generatedTypes = result.generatedTypes;
-      state.highlightedTypes = result.highlightedTypes;
-    },
+		updateJsonInput(newInput: string) {
+			state.jsonInput = newInput;
+			this.generateTypes();
+		},
 
-    async copyToClipboard() {
-      const success = await TypeViewerService.copyToClipboard(state.generatedTypes);
-      state.copySuccess = success;
-      if (success) {
-        setTimeout(() => state.copySuccess = false, 2000);
-      }
-    },
+		updateJsonData(newData: JsonData) {
+			const result = TypeViewerService.updateJsonData(newData);
+			state.parsedData = newData;
+			state.jsonInput = result.jsonInput;
+			state.generatedTypes = result.generatedTypes;
+			state.highlightedTypes = result.highlightedTypes;
+		},
 
-    toggleEditMode() {
-      state.editMode = !state.editMode;
-    },
+		async copyToClipboard() {
+			const success = await TypeViewerService.copyToClipboard(state.generatedTypes);
+			state.copySuccess = success;
+			if (success) {
+				setTimeout(() => (state.copySuccess = false), 2000);
+			}
+		},
 
-    clearInput() {
-      state.jsonInput = '';
-      this.generateTypes();
-    },
+		toggleEditMode() {
+			state.editMode = !state.editMode;
+		},
 
-    formatJson() {
-      state.jsonInput = TypeViewerService.formatJson(state.jsonInput);
-      this.generateTypes();
-    }
-  };
+		clearInput() {
+			state.jsonInput = '';
+			this.generateTypes();
+		},
+
+		formatJson() {
+			state.jsonInput = TypeViewerService.formatJson(state.jsonInput);
+			this.generateTypes();
+		}
+	};
 }

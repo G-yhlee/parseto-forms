@@ -46,3 +46,32 @@ export interface SaveResult {
   error?: string;
   validationErrors?: ValidationError[];
 }
+
+// Type generation related types
+export interface GeneratedInterface {
+  name: string;
+  fields: TypeAnalysis[];
+  code: string;
+  nestedInterfaces?: GeneratedInterface[];
+}
+
+export interface TypeAnalysis {
+  name: string;
+  type: string;
+  optional: boolean;
+  description?: string;
+}
+
+// JSON data type
+export type JsonData = Record<string, any>;
+
+// TypeViewer state
+export interface TypeViewerState {
+  jsonInput: string;
+  jsonError: string;
+  parsedData: JsonData | null;
+  generatedTypes: string;
+  highlightedTypes: string;
+  copySuccess: boolean;
+  editMode: boolean;
+}

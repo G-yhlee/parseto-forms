@@ -161,6 +161,13 @@
 			return;
 		}
 		
+		// 모든 input을 강제로 blur해서 편집 완료
+		const inputs = document.querySelectorAll('.json-editor input');
+		inputs.forEach(input => (input as HTMLElement).blur());
+		
+		// blur 이벤트 처리 완료를 위한 지연
+		await new Promise(resolve => setTimeout(resolve, 100));
+		
 		const result = await store.saveRecord(store.selectedCollection.name, store.record.id);
 		
 		if (result.success) {
@@ -171,23 +178,11 @@
 	}
 
 	function handleRecordUpdate(newRecord: any) {
-		if (store.record) {
-			// 기존 record의 시스템 필드들을 유지하면서 새 데이터로 업데이트
-			const mergedRecord = {
-				...store.record,
-				...newRecord,
-				// 시스템 필드들은 기존 값 유지
-				id: store.record.id,
-				collectionId: store.record.collectionId,
-				collectionName: store.record.collectionName,
-				created: store.record.created,
-				updated: store.record.updated
-			};
-			
-			store.updateRecord(mergedRecord);
-		} else {
-			store.updateRecord(newRecord);
-		}
+		console.log('handleRecordUpdate called with:', newRecord);
+		console.log('Current store.record:', store.record);
+		
+		// JsonEditor가 전체 record를 전달하므로 그대로 사용
+		store.updateRecord(newRecord);
 	}
 
 	function handleRecordSelect(recordId: string) {

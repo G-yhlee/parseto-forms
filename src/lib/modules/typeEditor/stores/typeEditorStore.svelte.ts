@@ -173,11 +173,7 @@ export const createTypeEditorStore = () => {
 		},
 
 		updateRecord(newRecord: PocketBaseRecord) {
-			// 완전히 새로운 state 객체 생성으로 reactivity 보장
-			state = {
-				...state,
-				record: JSON.parse(JSON.stringify(newRecord))
-			};
+			state.record = newRecord;
 			this.checkChanges();
 			this.generateTypes();
 		},
@@ -192,14 +188,11 @@ export const createTypeEditorStore = () => {
 		async saveRecord(collection: string, recordId: string) {
 			if (!state.record) return { success: false, error: 'No record to save' };
 
-			// 현재 record의 복사본 생성 (저장 중에 변경되는 것 방지)
-			const recordToSave = JSON.parse(JSON.stringify(state.record));
-
 			state.saving = true;
 			state.error = null;
 
 			try {
-				const result = await TypeEditorService.saveRecord(collection, recordId, recordToSave);
+				const result = await TypeEditorService.saveRecord(collection, recordId, state.record);
 
 				if (result.success && result.record) {
 					// 업데이트된 레코드로 상태 업데이트

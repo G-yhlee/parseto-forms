@@ -1,10 +1,10 @@
 import { createJsonEditorState } from './state.svelte';
-import { genCommonDefs } from '../../common/commonDefs';
+import { genInfrastructureDefs } from '../../controllers/infrastructureDefs';
 import type { PocketBaseRecord } from '../../types';
 
 export const genJsonEditorDefs = () => {
 	const state = createJsonEditorState();
-	const common = genCommonDefs();
+	const infrastructure = genInfrastructureDefs();
 
 	// Define helper functions first
 	const generateTypes = () => {
@@ -14,7 +14,7 @@ export const genJsonEditorDefs = () => {
 			return;
 		}
 		
-		const { generatedTypes, highlightedTypes } = common.actions.generateTypes(state.currentRecord);
+		const { generatedTypes, highlightedTypes } = infrastructure.actions.generateTypes(state.currentRecord);
 		state.setGeneratedTypes(generatedTypes);
 		state.setHighlightedTypes(highlightedTypes);
 	};
@@ -25,7 +25,7 @@ export const genJsonEditorDefs = () => {
 			return;
 		}
 		
-		const hasChanged = common.actions.hasRecordChanged(state.originalRecord, state.currentRecord);
+		const hasChanged = infrastructure.actions.hasRecordChanged(state.originalRecord, state.currentRecord);
 		state.setHasChanges(hasChanged);
 	};
 
@@ -50,7 +50,7 @@ export const genJsonEditorDefs = () => {
 		actions: {
 			loadRecord: (record: PocketBaseRecord) => {
 				state.setCurrentRecord(record);
-				state.setOriginalRecord(common.utils.deepClone(record));
+				state.setOriginalRecord(infrastructure.utils.deepClone(record));
 				state.setJsonData(record.data || record);
 				state.setHasChanges(false);
 				generateTypes();
@@ -76,11 +76,11 @@ export const genJsonEditorDefs = () => {
 					state.setSaving(true);
 					state.setError(null);
 					
-					const result = await common.actions.saveRecord(collectionId, state.currentRecord.id, state.currentRecord);
+					const result = await infrastructure.actions.saveRecord(collectionId, state.currentRecord.id, state.currentRecord);
 					
 					if (result.success && result.record) {
 						state.setCurrentRecord(result.record);
-						state.setOriginalRecord(common.utils.deepClone(result.record));
+						state.setOriginalRecord(infrastructure.utils.deepClone(result.record));
 						state.setJsonData(result.record.data || result.record);
 						checkChanges();
 						generateTypes();
@@ -100,7 +100,7 @@ export const genJsonEditorDefs = () => {
 
 			revertChanges: () => {
 				if (state.originalRecord) {
-					state.setCurrentRecord(common.utils.deepClone(state.originalRecord));
+					state.setCurrentRecord(infrastructure.utils.deepClone(state.originalRecord));
 					state.setJsonData(state.originalRecord.data || state.originalRecord);
 					checkChanges();
 					generateTypes();

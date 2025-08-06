@@ -187,7 +187,23 @@ export const genRecordServiceDefs = () => {
 			 */
 			getFirstRecordId: async (collectionIdOrName: string): Promise<string | null> => {
 				try {
-					const records = await genRecordServiceDefs().actions.loadRecordList(collectionIdOrName);
+					// 자기 자신 호출 대신 직접 로직 수행
+					state.setLastError(null);
+					
+					// Collection name 정규화
+					const collectionName = await common.utils.normalizeCollectionName(collectionIdOrName);
+					if (!collectionName) {
+						throw new Error('Collection not found for ID: ' + collectionIdOrName);
+					}
+					
+					// 캐시 확인
+					const cached = state.getCachedRecordList(collectionName);
+					if (cached && cached.length > 0) {
+						return cached[0].id;
+					}
+					
+					// PocketBase에서 첫 번째 레코드만 가져오기
+					const records = await common.infrastructure.recordRepository.findByCollection(collectionName);
 					return records.length > 0 ? records[0].id : null;
 				} catch (error) {
 					state.setLastError('Failed to get first record');

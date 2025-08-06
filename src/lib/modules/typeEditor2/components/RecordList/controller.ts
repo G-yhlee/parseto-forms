@@ -1,10 +1,10 @@
 import { createRecordListState } from './state.svelte';
-import { genCommonDefs } from '../../common/commonDefs';
+import { genInfrastructureDefs } from '../../controllers/infrastructureDefs';
 import type { PocketBaseRecord } from '../../types';
 
 export const genRecordListDefs = () => {
 	const state = createRecordListState();
-	const common = genCommonDefs();
+	const infrastructure = genInfrastructureDefs();
 
 	return {
 		datas: {
@@ -21,24 +21,32 @@ export const genRecordListDefs = () => {
 
 		actions: {
 			loadRecordList: async (collectionId: string) => {
-				if (state.recordListLoading) return;
+				if (state.recordListLoading) {
+					console.log('RecordList: Already loading, skipping...', collectionId);
+					return;
+				}
 
+				console.log('RecordList: Loading records for collection:', collectionId);
 				try {
 					state.setRecordListLoading(true);
-					const records = await common.actions.loadRecordList(collectionId);
+					const records = await infrastructure.actions.loadRecordList(collectionId);
 					state.setRecordList(records);
+					console.log('RecordList: Loaded', records.length, 'records');
 				} catch (err) {
-					console.error('Failed to load records:', err);
+					console.error('RecordList: Failed to load records:', err);
 					state.setRecordList([]);
-					throw err;
+					// 에러 발생해도 로딩 상태는 false로 설정해야 함
+					// throw err; // 에러 던지기 제거
 				} finally {
+					console.log('RecordList: Entering finally block');
 					state.setRecordListLoading(false);
+					console.log('RecordList: Loading finished, loading state should be false now:', state.recordListLoading);
 				}
 			},
 
 			selectRecord: async (collectionId: string, recordId: string) => {
 				try {
-					const record = await common.actions.loadRecord(collectionId, recordId);
+					const record = await infrastructure.actions.loadRecord(collectionId, recordId);
 					if (record) {
 						state.setSelectedRecord(record);
 						state.setCurrentRecordId(recordId);
@@ -61,11 +69,11 @@ export const genRecordListDefs = () => {
 
 			// 유틸리티 액션
 			getRecordPreview: (record: PocketBaseRecord): string => {
-				return common.utils.getRecordPreview(record);
+				return infrastructure.utils.getRecordPreview(record);
 			},
 
 			formatDate: (dateString: string): string => {
-				return common.utils.formatDate(dateString);
+				return infrastructure.utils.formatDate(dateString);
 			}
 		}
 	};

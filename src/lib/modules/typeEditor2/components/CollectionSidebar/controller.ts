@@ -1,16 +1,16 @@
 import { createCollectionSidebarState } from './state.svelte';
-import { genCommonDefs } from '../../common/commonDefs';
+import { genInfrastructureDefs } from '../../controllers/infrastructureDefs';
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
 
 export const genCollectionSidebarDefs = () => {
 	const state = createCollectionSidebarState();
-	const common = genCommonDefs();
+	const infrastructure = genInfrastructureDefs();
 	
 	// Auto-load collections on initialization
 	const loadCollectionsAction = async () => {
 		try {
 			state.setCollectionsLoading(true);
-			const collections = await common.actions.loadCollections();
+			const collections = await infrastructure.actions.loadCollections();
 			state.setCollections(collections);
 		} catch (err) {
 			console.error('Failed to load collections:', err);
@@ -20,10 +20,7 @@ export const genCollectionSidebarDefs = () => {
 		}
 	};
 
-	// Initialize collections if not already loaded
-	if (state.collections.length === 0 && !state.collectionsLoading) {
-		loadCollectionsAction();
-	}
+	// Collections will be loaded manually via actions.loadCollections()
 
 	return {
 		datas: {
@@ -43,7 +40,7 @@ export const genCollectionSidebarDefs = () => {
 			loadCollections: async () => {
 				try {
 					state.setCollectionsLoading(true);
-					const collections = await common.actions.loadCollections();
+					const collections = await infrastructure.actions.loadCollections();
 					state.setCollections(collections);
 				} catch (err) {
 					console.error('Failed to load collections:', err);
@@ -55,9 +52,9 @@ export const genCollectionSidebarDefs = () => {
 
 			selectCollection: (collection: CollectionEntity) => {
 				state.setSelectedCollection(collection);
-				// 자동 펼치기
+				// 자동 펼치기 (UI 상태만 변경, records 로딩은 상위에서 처리)
 				if (!state.expandedCollections.has(collection.id)) {
-					state.toggleCollectionRecords(collection);
+					state.setExpandedCollection(collection.id, true);
 				}
 			},
 

@@ -1,6 +1,8 @@
 import { createSidebarHeaderState, type SidebarHeaderProps } from './state.svelte';
 import { Database } from 'lucide-svelte';
 
+export type { SidebarHeaderProps } from './state.svelte';
+
 export const genSidebarHeaderDefs = (props: SidebarHeaderProps = {}) => {
 	const state = createSidebarHeaderState();
 	

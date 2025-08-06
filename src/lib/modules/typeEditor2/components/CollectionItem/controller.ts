@@ -55,7 +55,7 @@ export const genCollectionItemDefs = (props: CollectionItemProps) => {
 			
 			handleTogglePin: (event: Event) => {
 				if (props.onTogglePin) {
-					props.onTogglePin(props.collection.id, event);
+					props.onTogglePin(event, props.collection.id);
 				}
 			},
 			

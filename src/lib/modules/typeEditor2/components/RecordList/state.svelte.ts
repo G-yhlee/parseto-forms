@@ -28,6 +28,7 @@ export const createRecordListState = () => {
 			recordList = records;
 		},
 		setRecordListLoading: (loading: boolean) => {
+			console.log('RecordListState: Setting recordListLoading to:', loading);
 			recordListLoading = loading;
 		},
 		setCurrentRecordId: (id: string | null) => {

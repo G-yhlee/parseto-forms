@@ -1,4 +1,5 @@
 import type { PocketBaseRecord } from '../../types';
+import { SvelteMap } from 'svelte/reactivity';
 
 export const createTypeGenerationServiceState = () => {
 	// Generation states
@@ -6,7 +7,7 @@ export const createTypeGenerationServiceState = () => {
 	let lastGenerationTime = $state<number>(0);
 	
 	// Cache for generated types
-	let typeCache = $state<Map<string, { generatedTypes: string; highlightedTypes: string }>>(new Map());
+	let typeCache = new SvelteMap<string, { generatedTypes: string; highlightedTypes: string }>();
 	
 	// Current generation data
 	let lastGeneratedTypes = $state<string>('');
@@ -71,7 +72,7 @@ export const createTypeGenerationServiceState = () => {
 		
 		// Cache management
 		cacheTypes: (recordKey: string, generatedTypes: string, highlightedTypes: string) => {
-			const newCache = new Map(typeCache);
+			const newCache = new SvelteMap(typeCache);
 			newCache.set(recordKey, { generatedTypes, highlightedTypes });
 			typeCache = newCache;
 		},
@@ -81,7 +82,7 @@ export const createTypeGenerationServiceState = () => {
 		},
 		
 		clearCache: () => {
-			typeCache = new Map();
+			typeCache = new SvelteMap();
 		},
 		
 		// Utility methods

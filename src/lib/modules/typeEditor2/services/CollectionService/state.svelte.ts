@@ -1,4 +1,5 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
+import { SvelteMap } from 'svelte/reactivity';
 
 export const createCollectionServiceState = () => {
 	// Loading states
@@ -6,8 +7,8 @@ export const createCollectionServiceState = () => {
 	
 	// Cache for performance
 	let collectionsCache = $state<CollectionEntity[] | null>(null);
-	let collectionByIdCache = $state<Map<string, CollectionEntity>>(new Map());
-	let collectionByNameCache = $state<Map<string, CollectionEntity>>(new Map());
+	let collectionByIdCache = new SvelteMap<string, CollectionEntity>();
+	let collectionByNameCache = new SvelteMap<string, CollectionEntity>();
 	
 	// Metadata
 	let lastCacheUpdate = $state<number>(0);
@@ -39,8 +40,8 @@ export const createCollectionServiceState = () => {
 			lastCacheUpdate = Date.now();
 			
 			// Update lookup caches
-			const idCache = new Map<string, CollectionEntity>();
-			const nameCache = new Map<string, CollectionEntity>();
+			const idCache = new SvelteMap<string, CollectionEntity>();
+			const nameCache = new SvelteMap<string, CollectionEntity>();
 			
 			collections.forEach(collection => {
 				idCache.set(collection.id, collection);
@@ -65,8 +66,8 @@ export const createCollectionServiceState = () => {
 		
 		clearCache: () => {
 			collectionsCache = null;
-			collectionByIdCache = new Map();
-			collectionByNameCache = new Map();
+			collectionByIdCache = new SvelteMap();
+			collectionByNameCache = new SvelteMap();
 			lastCacheUpdate = 0;
 		},
 		

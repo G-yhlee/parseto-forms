@@ -1,12 +1,15 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
-import { genCommonDefs } from './common/commonDefs';
-import { genCollectionSidebarDefs } from './components/CollectionSidebar/controller';
-import { genRecordListDefs } from './components/RecordList/controller';
-import { genJsonEditorDefs } from './components/JsonEditorWithDefs/controller';
+import { genInfrastructureDefs } from './infrastructureDefs';
+import { genCollectionSidebarDefs } from '../components/CollectionSidebar/controller';
+import { genRecordListDefs } from '../components/RecordList/controller';
+import { genJsonEditorDefs } from '../components/JsonEditorWithDefs/controller';
 
-export const genTypeEditorDefs = () => {
+/**
+ * 애플리케이션 레이어 - 컴포넌트 조합과 워크플로우 관리
+ */
+export const genApplicationDefs = () => {
 	// Component definitions
-	const common = genCommonDefs();
+	const infrastructure = genInfrastructureDefs();
 	const collectionSidebar = genCollectionSidebarDefs();
 	const recordList = genRecordListDefs();
 	const jsonEditor = genJsonEditorDefs();
@@ -17,7 +20,7 @@ export const genTypeEditorDefs = () => {
 			collectionSidebar,
 			recordList,
 			jsonEditor,
-			common
+			infrastructure
 		},
 
 		// 통합된 데이터 인터페이스
@@ -60,14 +63,19 @@ export const genTypeEditorDefs = () => {
 		actions: {
 			// Collection actions
 			onCollectionSelect: async (collection: CollectionEntity) => {
-				if (collectionSidebar.datas.selectedCollection()?.id === collection.id) return;
+				if (collectionSidebar.datas.selectedCollection()?.id === collection.id) {
+					console.log('ApplicationDefs: Collection already selected, skipping...', collection.id);
+					return;
+				}
+				console.log('ApplicationDefs: Selecting collection:', collection.id);
 				
 				// Clear other components
 				recordList.actions.clearRecords();
 				jsonEditor.actions.clearEditor();
 				
-				// Select collection and load records
+				// Select collection (without auto-expand to avoid double loading)
 				collectionSidebar.actions.selectCollection(collection);
+				// Load records once
 				await recordList.actions.loadRecordList(collection.id);
 			},
 			

@@ -6,7 +6,7 @@ export interface CollectionItemProps {
 	isPinned?: boolean;
 	isExpanded?: boolean;
 	onSelect?: (collection: CollectionEntity) => void;
-	onTogglePin?: (collectionId: string, event: Event) => void;
+	onTogglePin?: (event: Event, collectionId: string) => void;
 	onToggleRecords?: (collection: CollectionEntity) => void;
 }
 

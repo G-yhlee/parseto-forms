@@ -2,8 +2,9 @@
  * TypeEditor2 모듈 진입점 - Uniform Defs Pattern
  */
 
-// 메인 컨트롤러 (통합 접점)
-export { genTypeEditorDefs } from './genTypeEditorDefs';
+// 메인 컨트롤러들 (통합 접점)
+export { genApplicationDefs } from './controllers/applicationDefs';
+export { genInfrastructureDefs } from './controllers/infrastructureDefs';
 
 // 컴포넌트 defs
 export { genCollectionSidebarDefs } from './components/CollectionSidebar/controller';
@@ -22,8 +23,7 @@ export { genRecordServiceDefs } from './services/RecordService/controller';
 export { genCollectionServiceDefs } from './services/CollectionService/controller';
 export { genTypeGenerationServiceDefs } from './services/TypeGenerationService/controller';
 
-// 공통 defs
-export { genCommonDefs } from './common/commonDefs';
+// 컨트롤러 defs는 위에서 이미 export됨
 
 // 컴포넌트들 (Uniform Defs Pattern)
 export { default as TypeEditorLayoutView } from './components/TypeEditorLayout/view.svelte';

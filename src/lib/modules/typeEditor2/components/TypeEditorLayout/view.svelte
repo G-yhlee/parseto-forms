@@ -3,15 +3,15 @@
 	import SidebarHeaderView from '../SidebarHeader/view.svelte';
 	import CollectionItemView from '../CollectionItem/view.svelte';
 	import RecordsListView from '../RecordsList/view.svelte';
-	
+
 	interface Props extends TypeEditorLayoutProps {}
-	
+
 	const props: Props = $props();
-	
+
 	// Generate defs
 	const defs = genTypeEditorLayoutDefs(props);
 	const { datas, states, actions } = defs;
-	
+
 	// Auto expand selected collection effect
 	$effect(() => {
 		actions.autoExpandSelectedCollection();
@@ -69,13 +69,15 @@
 
 								<!-- Records List Component -->
 								{#if isExpanded}
-									<RecordsListView
-										records={records}
-										loading={isSelectedCollection && datas.recordListLoading()}
-										currentRecordId={datas.currentRecordId()}
-										emptyText={isSelectedCollection ? 'No records' : 'Select to view records'}
-										onRecordSelect={actions.handleRecordClick}
-									/>
+									{#key `${collection.id}-${records.length}-${isSelectedCollection}`}
+										<RecordsListView
+											{records}
+											loading={isSelectedCollection && datas.recordListLoading()}
+											currentRecordId={datas.currentRecordId()}
+											emptyText={isSelectedCollection ? 'No records' : 'Select to view records'}
+											onRecordSelect={actions.handleRecordClick}
+										/>
+									{/key}
 								{/if}
 							{/each}
 						</div>
@@ -84,7 +86,7 @@
 			{/if}
 		</div>
 	</div>
-	
+
 	<main class="main-content">
 		{@render props.children?.()}
 	</main>
@@ -167,7 +169,8 @@
 		padding: 0.5rem;
 	}
 
-	.loading-state, .empty-state {
+	.loading-state,
+	.empty-state {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -188,8 +191,12 @@
 	}
 
 	@keyframes spin {
-		0% { transform: rotate(0deg); }
-		100% { transform: rotate(360deg); }
+		0% {
+			transform: rotate(0deg);
+		}
+		100% {
+			transform: rotate(360deg);
+		}
 	}
 
 	.collection-list {
@@ -273,7 +280,8 @@
 		border-radius: 50%;
 	}
 
-	.pin-btn, .toggle-records-btn {
+	.pin-btn,
+	.toggle-records-btn {
 		background: none;
 		border: none;
 		padding: 0.5rem;
@@ -283,7 +291,8 @@
 		border-left: 1px solid #e2e8f0;
 	}
 
-	.pin-btn:hover, .toggle-records-btn:hover {
+	.pin-btn:hover,
+	.toggle-records-btn:hover {
 		background-color: #f1f5f9;
 		color: #374151;
 	}
@@ -294,7 +303,8 @@
 		padding: 0.5rem;
 	}
 
-	.records-loading, .records-empty {
+	.records-loading,
+	.records-empty {
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;

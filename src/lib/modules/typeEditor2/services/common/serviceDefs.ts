@@ -50,11 +50,28 @@ export const genCommonServiceDefs = () => {
 			 * Collection ID나 Name을 Name으로 정규화
 			 */
 			normalizeCollectionName: async (collectionIdOrName: string): Promise<string | null> => {
-				if (!genCommonServiceDefs().utils.isCollectionId(collectionIdOrName)) {
+				// ID 형식인지 확인 (PocketBase ID는 15자 랜덤 문자열)
+				const isId = collectionIdOrName.length === 15 && /^[a-zA-Z0-9]+$/.test(collectionIdOrName);
+				if (!isId) {
 					return collectionIdOrName; // 이미 name인 경우
 				}
 				
-				return await genCommonServiceDefs().utils.getCollectionNameById(collectionIdOrName);
+				// Collection ID를 Name으로 변환
+				try {
+					// 먼저 collectionRepository에서 찾기
+					const collections = await container.collectionRepository.findAll();
+					const collection = collections.find(c => c.id === collectionIdOrName);
+					if (collection) {
+						return collection.name;
+					}
+					
+					// fallback: collectionDAO 사용
+					const collectionFromDAO = await container.collectionDAO.findById(collectionIdOrName);
+					return collectionFromDAO?.name || null;
+				} catch (error) {
+					console.error('Failed to get collection name:', error);
+					return null;
+				}
 			},
 
 			/**
@@ -76,7 +93,7 @@ export const genCommonServiceDefs = () => {
 			 * 필드 경로로 값 설정
 			 */
 			setValueByPath: (obj: any, path: string[], value: any): any => {
-				const result = genCommonServiceDefs().utils.deepClone(obj);
+				const result = JSON.parse(JSON.stringify(obj)); // 직접 딥 클론
 				let current = result;
 				
 				for (let i = 0; i < path.length - 1; i++) {

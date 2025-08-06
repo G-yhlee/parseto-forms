@@ -1,6 +1,7 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
 import type { PocketBaseRecord } from '../../types';
 import { PinnedCollectionsService } from '../../services/CollectionService/PinnedCollectionsService';
+import { SvelteSet } from 'svelte/reactivity';
 
 export interface TypeEditorLayoutProps {
 	// Collection data
@@ -24,7 +25,7 @@ export interface TypeEditorLayoutProps {
 export const createTypeEditorLayoutState = () => {
 	// UI states for sidebar
 	let collectionsExpanded = $state(true);
-	let expandedCollections = $state<Set<string>>(new Set());
+	let expandedCollections = new SvelteSet<string>();
 	let pinUpdateTrigger = $state(0);
 	
 	// Derived states
@@ -34,8 +35,8 @@ export const createTypeEditorLayoutState = () => {
 		
 		// 브라우저에서만 pinned 정보 로드
 		const pinnedIds = typeof window !== 'undefined' 
-			? PinnedCollectionsService.getPinnedCollections() 
-			: new Set<string>();
+			? new SvelteSet(PinnedCollectionsService.getPinnedCollections())
+			: new SvelteSet<string>();
 		
 		return { pinnedIds };
 	});
@@ -66,7 +67,7 @@ export const createTypeEditorLayoutState = () => {
 		},
 		
 		toggleCollectionRecords: (collectionId: string) => {
-			const newSet = new Set(expandedCollections);
+			const newSet = new SvelteSet(expandedCollections);
 			if (expandedCollections.has(collectionId)) {
 				newSet.delete(collectionId);
 			} else {
@@ -78,7 +79,7 @@ export const createTypeEditorLayoutState = () => {
 		
 		addExpandedCollection: (collectionId: string) => {
 			if (!expandedCollections.has(collectionId)) {
-				const newSet = new Set(expandedCollections);
+				const newSet = new SvelteSet(expandedCollections);
 				newSet.add(collectionId);
 				expandedCollections = newSet;
 			}

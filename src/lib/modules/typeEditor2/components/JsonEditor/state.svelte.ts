@@ -1,3 +1,5 @@
+import { SvelteSet } from 'svelte/reactivity';
+
 export interface JsonEditorProps {
 	data: any;
 	onUpdate: (newData: any) => void;
@@ -16,8 +18,8 @@ export const createJsonEditorState = (initialData: any = {}, path: string[] = []
 	let editValueValue = $state('');
 	
 	// UI states
-	let expandedObjects = $state<Set<string>>(new Set());
-	let expandedArrays = $state<Set<string>>(new Set());
+	let expandedObjects = new SvelteSet<string>();
+	let expandedArrays = new SvelteSet<string>();
 	
 	// Derived states
 	let dataType = $derived(() => {
@@ -75,7 +77,7 @@ export const createJsonEditorState = (initialData: any = {}, path: string[] = []
 		
 		// Expansion management
 		toggleObjectExpansion: (key: string) => {
-			const newSet = new Set(expandedObjects);
+			const newSet = new SvelteSet(expandedObjects);
 			if (expandedObjects.has(key)) {
 				newSet.delete(key);
 			} else {
@@ -85,7 +87,7 @@ export const createJsonEditorState = (initialData: any = {}, path: string[] = []
 		},
 		
 		toggleArrayExpansion: (key: string) => {
-			const newSet = new Set(expandedArrays);
+			const newSet = new SvelteSet(expandedArrays);
 			if (expandedArrays.has(key)) {
 				newSet.delete(key);
 			} else {

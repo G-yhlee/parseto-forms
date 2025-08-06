@@ -1,4 +1,5 @@
 import type { PocketBaseRecord, SaveResult } from '../../types';
+import { SvelteMap } from 'svelte/reactivity';
 
 export const createRecordServiceState = () => {
 	// Loading states
@@ -7,8 +8,8 @@ export const createRecordServiceState = () => {
 	let savingRecord = $state(false);
 	
 	// Cache for performance
-	let recordListCache = $state<Map<string, PocketBaseRecord[]>>(new Map());
-	let recordCache = $state<Map<string, PocketBaseRecord>>(new Map());
+	let recordListCache = new SvelteMap<string, PocketBaseRecord[]>();
+	let recordCache = new SvelteMap<string, PocketBaseRecord>();
 	
 	// Current operation states
 	let lastError = $state<string | null>(null);
@@ -51,7 +52,7 @@ export const createRecordServiceState = () => {
 		
 		// Cache management
 		cacheRecordList: (collectionName: string, records: PocketBaseRecord[]) => {
-			const newCache = new Map(recordListCache);
+			const newCache = new SvelteMap(recordListCache);
 			newCache.set(collectionName, records);
 			recordListCache = newCache;
 		},
@@ -61,7 +62,7 @@ export const createRecordServiceState = () => {
 		},
 		
 		cacheRecord: (recordKey: string, record: PocketBaseRecord) => {
-			const newCache = new Map(recordCache);
+			const newCache = new SvelteMap(recordCache);
 			newCache.set(recordKey, record);
 			recordCache = newCache;
 		},
@@ -71,17 +72,17 @@ export const createRecordServiceState = () => {
 		},
 		
 		clearCache: () => {
-			recordListCache = new Map();
-			recordCache = new Map();
+			recordListCache = new SvelteMap();
+			recordCache = new SvelteMap();
 		},
 		
 		clearCollectionCache: (collectionName: string) => {
-			const newListCache = new Map(recordListCache);
+			const newListCache = new SvelteMap(recordListCache);
 			newListCache.delete(collectionName);
 			recordListCache = newListCache;
 			
 			// Remove records from this collection from record cache
-			const newRecordCache = new Map(recordCache);
+			const newRecordCache = new SvelteMap(recordCache);
 			for (const [key, record] of recordCache) {
 				if (record.collectionName === collectionName) {
 					newRecordCache.delete(key);

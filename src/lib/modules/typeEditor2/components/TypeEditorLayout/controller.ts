@@ -1,4 +1,6 @@
 import { createTypeEditorLayoutState, type TypeEditorLayoutProps } from './state.svelte';
+
+export type { TypeEditorLayoutProps };
 import { ChevronDown, ChevronRight, Database, FileText, Users } from 'lucide-svelte';
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
 import type { PocketBaseRecord } from '../../types';

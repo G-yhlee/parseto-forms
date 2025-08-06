@@ -1,136 +1,114 @@
-# TypeEditor Module
+# Parseto Forms
 
-PocketBase 컬렉션의 레코드를 직접 편집하고 TypeScript 타입을 실시간으로 생성하는 모듈입니다.
+## TypeEditor2 Module Structure
 
-## 아키텍처
+TypeEditor2는 Uniform Defs Pattern을 사용하여 구조화된 모듈입니다.
 
-```
-typeeditor/
-├── components/          # UI 컴포넌트
-│   └── TypeEditor.svelte
-├── services/           # 비즈니스 로직
-│   └── TypeEditorService.ts
-├── stores/             # 상태 관리
-│   └── typeEditorStore.svelte.ts
-├── types/              # 타입 정의
-│   └── index.ts
-└── index.ts            # 모듈 진입점
-```
-
-## 기능
-
-- **레코드 로드**: PocketBase에서 특정 레코드 가져오기
-- **실시간 편집**: JsonEditor를 통한 인라인 데이터 편집
-- **타입 생성**: 편집된 데이터에서 TypeScript 인터페이스 자동 생성
-- **변경 감지**: 원본 데이터와 비교하여 변경사항 추적
-- **저장 기능**: PocketBase에 변경사항 저장
-- **에러 처리**: 유효성 검사 및 네트워크 오류 처리
-
-## URL 형식
+### Folder Structure
 
 ```
-/typeeditor?collection=컬렉션ID&recordId=레코드ID&filter=필터&sort=정렬
+src/lib/modules/typeEditor2/
+├── controllers/                    # 컨트롤러 레이어
+│   ├── applicationDefs.ts          # 애플리케이션 레이어 - 컴포넌트 조합과 워크플로우 관리
+│   └── infrastructureDefs.ts       # 인프라스트럭처 레이어 - 서비스들과 공통 유틸리티 관리
+│
+├── components/                     # UI 컴포넌트들 (Uniform Defs Pattern)
+│   ├── CollectionSidebar/
+│   │   ├── state.svelte.ts         # 상태 관리 ($state, $derived)
+│   │   ├── controller.ts           # 비즈니스 로직 (genDefs 함수)
+│   │   └── view.svelte            # UI 컴포넌트
+│   │
+│   ├── JsonEditor/                 # 간단한 JSON 에디터
+│   ├── JsonEditorWithDefs/         # Defs 패턴을 사용한 JSON 에디터
+│   ├── RecordList/                 # 레코드 목록 관리
+│   ├── TypeEditorLayout/           # 메인 레이아웃
+│   │
+│   └── Sub-Components/             # 하위 컴포넌트들
+│       ├── SidebarHeader/          # 사이드바 헤더
+│       ├── CollectionItem/         # 개별 컬렉션 아이템
+│       └── RecordsList/            # 레코드 리스트
+│
+├── services/                       # 서비스 레이어 (Uniform Defs Pattern)
+│   ├── RecordService/
+│   │   ├── state.svelte.ts         # 레코드 관련 상태 관리
+│   │   └── controller.ts           # 레코드 서비스 로직
+│   │
+│   ├── CollectionService/
+│   │   ├── state.svelte.ts         # 컬렉션 관련 상태 관리
+│   │   ├── controller.ts           # 컬렉션 서비스 로직
+│   │   └── PinnedCollectionsService.ts  # 핀된 컬렉션 관리
+│   │
+│   └── TypeGenerationService/
+│       ├── state.svelte.ts         # 타입 생성 관련 상태
+│       └── controller.ts           # 타입 생성 서비스
+│
+├── types.ts                        # 공통 타입 정의
+└── index.ts                        # 모듈 진입점
 ```
 
-### 예시
-```
-/typeeditor?collection=pbc_117015758&recordId=009268273c6045089f840e1899fdab9e&filter=&sort=-%40rowid
-```
+### Architecture Pattern - Uniform Defs Pattern
 
-## 사용법
+각 컴포넌트와 서비스는 일관된 구조를 따릅니다:
 
-### 기본 사용
+#### 1. State Layer (`state.svelte.ts`)
+
+- Svelte 5 runes 사용 (`$state`, `$derived`, `$effect`)
+- 순수한 상태 관리만 담당
+- 상태 변경 액션들 제공
+
+#### 2. Controller Layer (`controller.ts`)
+
+- `genXXXDefs()` 함수로 defs 패턴 구현
+- 비즈니스 로직과 상태 조합
+- `{ datas, states, actions }` 객체 반환
+
+#### 3. View Layer (`view.svelte`)
+
+- 순수한 UI 컴포넌트
+- Props로 데이터 받고 이벤트 emit
+- 컨트롤러에서 생성된 defs 사용
+
+### Controller Layers
+
+#### Infrastructure Layer (`infrastructureDefs.ts`)
+
+- **역할**: 서비스들과 공통 유틸리티 관리
+- **제공**:
+  - 서비스 인스턴스들 (RecordService, CollectionService, TypeGenerationService)
+  - 공통 유틸리티 (formatDate, getRecordPreview, deepClone)
+  - 서비스 액션 래핑
+
+#### Application Layer (`applicationDefs.ts`)
+
+- **역할**: 컴포넌트 조합과 워크플로우 관리
+- **제공**:
+  - 컴포넌트 defs 통합
+  - 통합된 데이터 인터페이스
+  - 전체 애플리케이션 워크플로우 관리
+
+### Usage Example
 
 ```typescript
-import { 
-  TypeEditor, 
-  TypeEditorService, 
-  createTypeEditorStore 
-} from '$lib/modules/typeeditor';
+// 애플리케이션 진입점
+import { genApplicationDefs } from '$lib/modules/typeEditor2';
 
-// URL 파라미터 파싱
-const params = TypeEditorService.parseUrlParams(searchParams);
+const defs = genApplicationDefs();
+const { datas, states, actions } = defs;
 
-// 스토어 생성
-const store = createTypeEditorStore();
-
-// 레코드 로드
-await store.loadRecord(params);
+// 컬렉션 선택 → 레코드 로드 → 편집의 전체 워크플로우
+await actions.onCollectionSelect(collection);
+await actions.onRecordSelect(recordId);
+actions.onJsonUpdate(newData);
 ```
 
-### 컴포넌트 사용
+### Key Features
 
-```svelte
-<script>
-  import { TypeEditor } from '$lib/modules/typeeditor';
-  
-  function handleRecordUpdate(newRecord) {
-    // 레코드 업데이트 처리
-  }
-  
-  async function handleSave() {
-    // 저장 처리
-  }
-</script>
+- **일관된 패턴**: 모든 컴포넌트가 동일한 state/controller/view 구조
+- **선언적 접근**: genDefs 함수로 상태와 액션을 미리 정의
+- **관심사 분리**: 상태, 로직, UI가 명확히 분리
+- **타입 안전성**: TypeScript로 전체 인터페이스 타입 정의
+- **재사용성**: 컴포넌트와 서비스의 독립적 사용 가능
 
-<TypeEditor 
-  record={record}
-  onUpdate={handleRecordUpdate}
-  onSave={handleSave}
-  hasChanges={hasChanges}
-  saving={saving}
-  generatedTypes={generatedTypes}
-  highlightedTypes={highlightedTypes}
-/>
-```
+### ref
 
-## 특징
-
-- **PocketBase 통합**: 기존 PocketBase 서비스와 완전 통합
-- **실시간 타입 생성**: 데이터 변경 시 즉시 TypeScript 타입 업데이트
-- **변경사항 추적**: 원본과 현재 데이터 비교로 정확한 변경 감지
-- **에러 처리**: PocketBase 유효성 검사 오류 처리
-- **반응형 UI**: 모바일에서도 사용 가능한 반응형 디자인
-
-## API 레퍼런스
-
-### TypeEditorService
-
-- `parseUrlParams(searchParams)`: URL 파라미터 파싱
-- `loadRecord(params)`: 레코드 로드
-- `saveRecord(collection, recordId, data)`: 레코드 저장
-- `generateTypesFromRecord(record)`: 타입 생성
-- `hasRecordChanged(original, current)`: 변경사항 감지
-
-### TypeEditorStore
-
-- `loadRecord(params)`: 레코드 로드
-- `updateRecord(newRecord)`: 레코드 업데이트
-- `updateFieldByPath(path, value)`: 특정 필드 업데이트
-- `saveRecord(collection, recordId)`: 레코드 저장
-- `revertChanges()`: 변경사항 되돌리기
-- `checkChanges()`: 변경사항 확인
-
-## 컴포넌트 구조
-
-```
-TypeEditor
-├── Header (제목, 메타정보, 액션 버튼)
-├── Left Panel (데이터 편집기)
-│   ├── View Mode (JSON 보기)
-│   └── Edit Mode (JsonEditor)
-└── Right Panel (생성된 TypeScript 타입)
-```
-
-## 에러 처리
-
-- **네트워크 오류**: 연결 실패 시 재시도 안내
-- **유효성 검사**: PocketBase 규칙 위반 시 상세 메시지
-- **권한 오류**: 접근 권한 없을 시 안내
-- **데이터 오류**: 잘못된 JSON 형식 등 데이터 문제
-
-## 의존성
-
-- TypeViewer 모듈 (타입 생성 및 JsonEditor)
-- PocketBase 서비스 (레코드 CRUD)
-- Svelte 5 (반응형 상태 관리)
+- https://github.com/ritz078/transform/

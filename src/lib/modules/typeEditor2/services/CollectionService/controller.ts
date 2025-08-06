@@ -70,8 +70,9 @@ export const genCollectionServiceDefs = () => {
 						}
 					}
 					
-					// 캐시에 없으면 전체 컬렉션을 로드하여 캐시 갱신
-					const collections = await genCollectionServiceDefs().actions.loadCollections(useCache);
+					// 캐시에 없으면 직접 로드 (재귀 호출 방지)
+					const collections = await common.infrastructure.collectionRepository.findAll();
+					state.cacheCollections(collections);
 					
 					// 다시 캐시에서 찾기
 					return state.getCachedCollectionById(id) || null;
@@ -98,8 +99,9 @@ export const genCollectionServiceDefs = () => {
 						}
 					}
 					
-					// 캐시에 없으면 전체 컬렉션을 로드하여 캐시 갱신
-					const collections = await genCollectionServiceDefs().actions.loadCollections(useCache);
+					// 캐시에 없으면 직접 로드 (재귀 호출 방지)
+					const collections = await common.infrastructure.collectionRepository.findAll();
+					state.cacheCollections(collections);
 					
 					// 다시 캐시에서 찾기
 					return state.getCachedCollectionByName(name) || null;
@@ -179,7 +181,10 @@ export const genCollectionServiceDefs = () => {
 
 			refreshCache: async (): Promise<CollectionEntity[]> => {
 				state.clearCache();
-				return await genCollectionServiceDefs().actions.loadCollections(false);
+				// 직접 로드 (재귀 호출 방지)
+				const collections = await common.infrastructure.collectionRepository.findAll();
+				state.cacheCollections(collections);
+				return collections;
 			},
 
 			/**

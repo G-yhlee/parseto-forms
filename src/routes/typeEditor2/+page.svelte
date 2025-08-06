@@ -2,13 +2,13 @@
 	import { onMount, tick } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { genTypeEditorDefs } from '$lib/modules/typeEditor2/genTypeEditorDefs';
+	import { genApplicationDefs } from '$lib/modules/typeEditor2/controllers/applicationDefs';
 	import { TypeEditorService } from '$lib/modules/typeEditor';
 	import type { TypeEditorParams } from '$lib/modules/typeEditor';
 	import { TypeEditorLayoutView, JsonEditorView } from '$lib/modules/typeEditor2';
 
-	// Generate definitions
-	const defs = genTypeEditorDefs();
+	// Single unified defs instance (like typeEditor's single store)
+	const defs = genApplicationDefs();
 	const { datas, states, actions } = defs;
 
 	// Local state for page management
@@ -71,7 +71,7 @@
 		}
 	}
 
-	// 컬렉션만 있는 경우
+	// 컬렉션만 있는 경우 (typeEditor 방식으로 단순화)
 	async function loadCollectionOnly(collectionId: string) {
 		console.log('loadCollectionOnly: Loading collection:', collectionId);
 		
@@ -84,9 +84,10 @@
 			return;
 		}
 
+		// typeEditor처럼 컬렉션 선택 (레코드 리스트도 자동 로드됨)
 		await actions.onCollectionSelect(collection);
 
-		// 첫 번째 레코드가 있으면 자동 선택
+		// 첫 번째 레코드 자동 선택 (typeEditor 방식)
 		const firstRecordId = await TypeEditorService.getFirstRecordId(collectionId);
 		console.log('loadCollectionOnly: First record ID:', firstRecordId);
 		if (firstRecordId) {
@@ -102,10 +103,9 @@
 		initializing = true;
 
 		try {
-			// 1. 컬렉션 로딩 대기
-			while (states.collectionsLoading()) {
-				await new Promise(resolve => setTimeout(resolve, 100));
-			}
+			// 1. 컬렉션 로딩
+			console.log('onMount: Loading collections...');
+			await actions.refreshCollections();
 			console.log('onMount: Collections loaded, count:', datas.collections().length);
 
 			// 2. URL 파라미터 확인 및 초기 데이터 로드
@@ -199,8 +199,8 @@
 
 		goto(newUrl.toString(), { replaceState: true });
 
-		// 컬렉션 선택
-		actions.onCollectionSelect(collection);
+		// URL 업데이트로 인한 effect에서 처리되므로 여기서는 호출하지 않음
+		// actions.onCollectionSelect(collection); // 중복 호출 제거!
 	}
 </script>
 
@@ -219,7 +219,7 @@
 	onRecordSelect={handleRecordSelect}
 >
 	{#snippet children()}
-		{#if states.recordListLoading() && !datas.currentRecord()}
+		{#if initializing || states.recordListLoading()}
 			<div class="loading-state">
 				<div class="spinner"></div>
 				<p>Loading record...</p>

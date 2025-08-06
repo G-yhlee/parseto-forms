@@ -5,9 +5,9 @@ import { genCollectionServiceDefs } from '../services/CollectionService/controll
 import { genTypeGenerationServiceDefs } from '../services/TypeGenerationService/controller';
 
 /**
- * 공통으로 사용되는 상태와 액션들 - 새로운 서비스 구조 기반
+ * 인프라스트럭처 레이어 - 서비스들과 공통 유틸리티 관리
  */
-export const genCommonDefs = () => {
+export const genInfrastructureDefs = () => {
 	// 서비스 인스턴스들
 	const recordService = genRecordServiceDefs();
 	const collectionService = genCollectionServiceDefs();

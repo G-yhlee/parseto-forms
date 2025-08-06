@@ -5,8 +5,7 @@
 	import { genTypeEditorDefs } from '$lib/modules/typeEditor2/genTypeEditorDefs';
 	import { TypeEditorService } from '$lib/modules/typeEditor';
 	import type { TypeEditorParams } from '$lib/modules/typeEditor';
-	import TypeEditorLayout from '$lib/modules/typeEditor2/components/TypeEditorLayout.svelte';
-	import JsonEditor from '$lib/modules/typeEditor2/components/JsonEditor.svelte';
+	import { TypeEditorLayoutView, JsonEditorView } from '$lib/modules/typeEditor2';
 
 	// Generate definitions
 	const defs = genTypeEditorDefs();
@@ -209,7 +208,7 @@
 	<title>Type Editor - Record Editor</title>
 </svelte:head>
 
-<TypeEditorLayout
+<TypeEditorLayoutView
 	collections={datas.collections()}
 	collectionsLoading={states.collectionsLoading()}
 	selectedCollection={datas.selectedCollection()}
@@ -273,7 +272,7 @@
 							{#if isEditMode}
 								<div class="editor-view">
 									{#if !states.saving()}
-										<JsonEditor data={datas.currentRecord()} onUpdate={actions.onJsonUpdate} />
+										<JsonEditorView data={datas.currentRecord()} onUpdate={actions.onJsonUpdate} />
 									{:else}
 										<div class="saving-overlay">
 											<div class="spinner"></div>
@@ -340,7 +339,7 @@
 			</div>
 		{/if}
 	{/snippet}
-</TypeEditorLayout>
+</TypeEditorLayoutView>
 
 <style>
 	.loading-state,

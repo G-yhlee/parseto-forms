@@ -1,157 +1,161 @@
 import type { CollectionEntity } from '$lib/domain/entities/Collection';
-import { createCollectionsState } from '../states/collectionsState.svelte';
-import { createRecordsState } from '../states/recordsState.svelte';
-import { createEditorState } from '../states/editorState.svelte';
+import { genCommonDefs } from '../common/commonDefs';
+import { genCollectionSidebarDefs } from '../components/CollectionSidebar/controller';
+import { genRecordListDefs } from '../components/RecordList/controller';
+import { genJsonEditorDefs } from '../components/JsonEditorWithDefs/controller';
 
 export const genTypeEditorDefs = () => {
-	// Create state instances
-	const collectionsState = createCollectionsState();
-	const recordsState = createRecordsState();
-	const editorState = createEditorState();
+	// Component definitions
+	const common = genCommonDefs();
+	const collectionSidebar = genCollectionSidebarDefs();
+	const recordList = genRecordListDefs();
+	const jsonEditor = genJsonEditorDefs();
 
 	return {
+		// Component defs 직접 노출
+		components: {
+			collectionSidebar,
+			recordList,
+			jsonEditor,
+			common
+		},
+
+		// 통합된 데이터 인터페이스
 		datas: {
-			// Collections data
-			collections: () => collectionsState.collections,
-			sortedCollections: () => collectionsState.sortedCollections,
-			selectedCollection: () => collectionsState.selectedCollection,
+			// Collections data from CollectionSidebar
+			collections: () => collectionSidebar.datas.collections(),
+			sortedCollections: () => collectionSidebar.datas.sortedCollections(),
+			selectedCollection: () => collectionSidebar.datas.selectedCollection(),
 			
-			// Records data
-			recordList: () => recordsState.recordList,
-			currentRecord: () => recordsState.currentRecord,
-			currentRecordData: () => recordsState.currentRecordData,
-			jsonEditorData: () => editorState.jsonEditorData,
+			// Records data from RecordList
+			recordList: () => recordList.datas.recordList(),
+			currentRecord: () => recordList.datas.selectedRecord(),
+			recordCount: () => recordList.datas.recordCount(),
 			
-			// Generated data
-			generatedTypes: () => editorState.generatedTypes,
-			highlightedTypes: () => editorState.highlightedTypes,
+			// Json Editor data
+			jsonEditorData: () => jsonEditor.datas.jsonData(),
+			generatedTypes: () => jsonEditor.datas.generatedTypes(),
+			highlightedTypes: () => jsonEditor.datas.highlightedTypes(),
 			
 			// Error data
-			error: () => editorState.error
+			error: () => jsonEditor.datas.error()
 		},
 		
 		states: {
 			// Loading states
-			collectionsLoading: () => collectionsState.collectionsLoading,
-			recordListLoading: () => recordsState.recordListLoading,
-			saving: () => editorState.saving,
+			collectionsLoading: () => collectionSidebar.states.collectionsLoading(),
+			recordListLoading: () => recordList.states.recordListLoading(),
+			saving: () => jsonEditor.states.saving(),
 			
 			// UI states
-			collectionsExpanded: () => collectionsState.collectionsExpanded,
-			expandedCollections: () => collectionsState.expandedCollections,
-			editMode: () => editorState.editMode,
-			currentRecordId: () => recordsState.currentRecordId,
+			collectionsExpanded: () => collectionSidebar.states.collectionsExpanded(),
+			expandedCollections: () => collectionSidebar.states.expandedCollections(),
+			editMode: () => jsonEditor.states.editMode(),
+			currentRecordId: () => recordList.datas.currentRecordId(),
 			
 			// Change states
-			hasChanges: () => recordsState.hasChanges
+			hasChanges: () => jsonEditor.states.hasChanges()
 		},
 		
 		actions: {
 			// Collection actions
 			onCollectionSelect: async (collection: CollectionEntity) => {
-				if (collectionsState.selectedCollection?.id === collection.id) return;
+				if (collectionSidebar.datas.selectedCollection()?.id === collection.id) return;
 				
-				collectionsState.setSelectedCollection(collection);
-				recordsState.clearRecords();
-				editorState.clearEditor();
+				// Clear other components
+				recordList.actions.clearRecords();
+				jsonEditor.actions.clearEditor();
 				
-				await recordsState.loadRecordList(collection.id);
+				// Select collection and load records
+				collectionSidebar.actions.selectCollection(collection);
+				await recordList.actions.loadRecordList(collection.id);
 			},
 			
 			toggleCollections: () => {
-				collectionsState.toggleCollections();
+				collectionSidebar.actions.toggleCollections();
 			},
 			
 			toggleCollectionRecords: (collection: CollectionEntity) => {
-				collectionsState.toggleCollectionRecords(collection);
+				collectionSidebar.actions.toggleCollectionRecords(collection);
 			},
 			
 			togglePin: (collectionId: string) => {
-				collectionsState.togglePin(collectionId);
+				collectionSidebar.actions.togglePin(collectionId);
 			},
 			
 			// Record actions
 			onRecordSelect: async (recordId: string) => {
-				if (!collectionsState.selectedCollection) return;
+				const selectedCollection = collectionSidebar.datas.selectedCollection();
+				if (!selectedCollection) return;
 				
 				try {
-					editorState.setError(null);
-					const record = await recordsState.loadRecord(collectionsState.selectedCollection.id, recordId);
-					
+					const record = await recordList.actions.selectRecord(selectedCollection.id, recordId);
 					if (record) {
-						editorState.updateJsonEditorData(record.data || record);
-						editorState.generateTypes(record);
+						jsonEditor.actions.loadRecord(record);
 					}
 				} catch (err) {
 					const errorMessage = err instanceof Error ? err.message : 'Failed to load record';
-					editorState.setError(errorMessage);
+					console.error(errorMessage);
 				}
 			},
 			
 			// Editor actions
 			onJsonUpdate: (newData: any) => {
-				if (!recordsState.currentRecord) return;
-				
-				const updatedRecord = { ...recordsState.currentRecord, data: newData };
-				recordsState.updateRecord(updatedRecord);
-				editorState.updateJsonEditorData(newData);
-				editorState.generateTypes(updatedRecord);
+				jsonEditor.actions.updateJsonData(newData);
+				// Update record in list if needed
+				const currentRecord = recordList.datas.selectedRecord();
+				if (currentRecord) {
+					recordList.actions.updateRecord(currentRecord);
+				}
 			},
 			
 			toggleEditMode: () => {
-				editorState.toggleEditMode();
+				jsonEditor.actions.toggleEditMode();
 			},
 			
 			// Save actions
 			onSave: async () => {
-				if (!collectionsState.selectedCollection || !recordsState.currentRecord) {
-					return { success: false, error: 'No record to save' };
+				const selectedCollection = collectionSidebar.datas.selectedCollection();
+				if (!selectedCollection) {
+					return { success: false, error: 'No collection selected' };
 				}
 				
-				try {
-					editorState.setSaving(true);
-					editorState.setError(null);
-					
-					const result = await recordsState.saveRecord(collectionsState.selectedCollection.id);
-					
-					if (result.success && recordsState.currentRecord) {
-						editorState.updateJsonEditorData(recordsState.currentRecord.data || recordsState.currentRecord);
-						editorState.generateTypes(recordsState.currentRecord);
-					} else {
-						editorState.setError(result.error || 'Failed to save');
+				const result = await jsonEditor.actions.saveRecord(selectedCollection.id);
+				
+				// Update record in list if save was successful
+				if (result.success) {
+					const updatedRecord = recordList.datas.selectedRecord();
+					if (updatedRecord) {
+						recordList.actions.updateRecord(updatedRecord);
 					}
-					
-					return result;
-				} catch (err) {
-					const errorMessage = err instanceof Error ? err.message : 'Failed to save record';
-					editorState.setError(errorMessage);
-					return { success: false, error: errorMessage };
-				} finally {
-					editorState.setSaving(false);
 				}
+				
+				return result;
 			},
 			
 			onRevert: () => {
-				recordsState.revertChanges();
-				if (recordsState.currentRecord) {
-					editorState.updateJsonEditorData(recordsState.currentRecord.data || recordsState.currentRecord);
-					editorState.generateTypes(recordsState.currentRecord);
+				jsonEditor.actions.revertChanges();
+				// Update record list with reverted data
+				const currentRecord = recordList.datas.selectedRecord();
+				if (currentRecord) {
+					recordList.actions.updateRecord(currentRecord);
 				}
 			},
 			
 			// Copy action
 			onCopyTypes: async () => {
-				return await editorState.copyTypesToClipboard();
+				return await jsonEditor.actions.copyTypesToClipboard();
 			},
 			
 			// Refresh actions
 			refreshCollections: async () => {
-				await collectionsState.loadCollections();
+				await collectionSidebar.actions.loadCollections();
 			},
 			
 			refreshRecordList: async () => {
-				if (collectionsState.selectedCollection) {
-					await recordsState.loadRecordList(collectionsState.selectedCollection.id);
+				const selectedCollection = collectionSidebar.datas.selectedCollection();
+				if (selectedCollection) {
+					await recordList.actions.loadRecordList(selectedCollection.id);
 				}
 			}
 		}

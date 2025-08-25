@@ -9,8 +9,12 @@ export { default as CollectionItemView } from './components/CollectionItem/view.
 export { default as SidebarHeaderView } from './components/SidebarHeader/view.svelte';
 
 // 타입과 샘플 데이터
-export type { JsonData } from './types';
+export type { JsonData, Collection } from './types';
 export { sampleJsonData } from './types';
+
+// PocketBase 서비스들
+export { pocketbaseService } from './services/pocketbaseService';
+export { collectionStore } from './services/collectionStore.svelte';
 
 // 샘플 컬렉션 데이터
 export const sampleCollections = [

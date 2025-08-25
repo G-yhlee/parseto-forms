@@ -5,16 +5,36 @@
 		SidebarHeaderView,
 		sampleJsonData, 
 		sampleCollections,
-		type JsonData 
+		collectionStore,
+		pocketbaseService,
+		type JsonData,
+		type Collection 
 	} from '$lib/modules/typeEditor3';
 
 	// 페이지 상태
 	let selectedCollectionId = $state<string | null>(null);
 	let selectedCollection = $derived(() => 
-		sampleCollections.find(c => c.id === selectedCollectionId) || null
+		currentCollections.find(c => c.id === selectedCollectionId) || null
 	);
 	let pinnedCollectionIds = $state(new Set(['users'])); // users 컬렉션을 기본으로 핀
 	let expandedCollectionIds = $state(new Set<string>());
+	
+	// 데이터 소스 선택 (샘플 데이터 vs PB 실제 데이터)
+	let useRealData = $state(false);
+	let connectionStatus = $state<{ connected: boolean; url: string; error?: string } | null>(null);
+	
+	// 현재 사용할 컬렉션 목록
+	let currentCollections = $derived(() => {
+		const result = useRealData && collectionStore.hasData ? collectionStore.userCollections : sampleCollections;
+		console.log('currentCollections derived:', {
+			useRealData,
+			hasData: collectionStore.hasData,
+			userCollections: collectionStore.userCollections.length,
+			sampleCollections: sampleCollections.length,
+			result: result.length
+		});
+		return result;
+	});
 
 	// JSON 에디터 데이터
 	let jsonData = $state<JsonData>(sampleJsonData);
@@ -69,6 +89,48 @@
 		document.body.removeChild(link);
 		URL.revokeObjectURL(url);
 	};
+
+	// PB 연결 관련 핸들러들
+	const checkConnection = async () => {
+		console.log('Checking PB connection...');
+		connectionStatus = await collectionStore.checkConnection();
+		console.log('Connection status:', connectionStatus);
+	};
+
+	const loadCollections = async () => {
+		console.log('Loading collections from PB...');
+		await collectionStore.fetchCollections();
+	};
+
+	const refreshCollections = async () => {
+		console.log('Refreshing collections from PB...');
+		await collectionStore.refreshCollections();
+	};
+
+	const toggleDataSource = async () => {
+		console.log('toggleDataSource: Current state:', { useRealData, hasData: collectionStore.hasData });
+		
+		if (!useRealData) {
+			// 실제 데이터로 전환하기 전에 연결 확인
+			console.log('toggleDataSource: Switching to real data...');
+			await checkConnection();
+			
+			if (connectionStatus?.connected) {
+				await loadCollections();
+				useRealData = true;
+				selectedCollectionId = null; // 선택 초기화
+				console.log('toggleDataSource: Switched to real data, collections:', collectionStore.collections.length);
+			} else {
+				console.error('toggleDataSource: Connection failed:', connectionStatus?.error);
+				alert(`PocketBase 연결 실패: ${connectionStatus?.error || 'Unknown error'}`);
+			}
+		} else {
+			// 샘플 데이터로 전환
+			console.log('toggleDataSource: Switching to sample data...');
+			useRealData = false;
+			selectedCollectionId = null; // 선택 초기화
+		}
+	};
 </script>
 
 <svelte:head>
@@ -92,6 +154,19 @@
 			<button class="btn btn-success" onclick={exportJson}>
 				📁 Export JSON
 			</button>
+			<button 
+				class="btn {useRealData ? 'btn-warning' : 'btn-info'}" 
+				onclick={toggleDataSource}
+				disabled={collectionStore.loading}
+			>
+				{#if collectionStore.loading}
+					⏳ Loading...
+				{:else if useRealData}
+					📦 Sample Data
+				{:else}
+					🔗 PocketBase
+				{/if}
+			</button>
 		</div>
 	</header>
 
@@ -104,8 +179,58 @@
 				icon="🎨"
 			/>
 			
+			<!-- 데이터 소스 상태 -->
+			<div class="data-source-status">
+				<div class="status-header">
+					<h4>Data Source</h4>
+					<span class="status-badge {useRealData ? 'real' : 'sample'}">
+						{useRealData ? 'PocketBase' : 'Sample'}
+					</span>
+				</div>
+				
+				{#if useRealData}
+					<div class="pb-info">
+						<p><strong>URL:</strong> {connectionStatus?.url || 'Unknown'}</p>
+						<p><strong>Status:</strong> 
+							<span class="connection-status {connectionStatus?.connected ? 'connected' : 'disconnected'}">
+								{connectionStatus?.connected ? '🟢 Connected' : '🔴 Disconnected'}
+							</span>
+						</p>
+						{#if connectionStatus?.error}
+							<p class="error-text"><strong>Error:</strong> {connectionStatus.error}</p>
+						{/if}
+						<p><strong>Collections:</strong> {collectionStore.userCollections.length} user / {collectionStore.systemCollections.length} system</p>
+						<p><strong>Total Collections:</strong> {collectionStore.collections.length}</p>
+						<p><strong>Current Collections:</strong> {currentCollections.length}</p>
+						<p><strong>Loading:</strong> {collectionStore.loading ? 'Yes' : 'No'}</p>
+						{#if collectionStore.lastFetch}
+							<p><strong>Last Update:</strong> {new Date(collectionStore.lastFetch).toLocaleTimeString()}</p>
+						{/if}
+						
+						<!-- 디버그: 컬렉션 목록 -->
+						{#if currentCollections.length > 0}
+							<details>
+								<summary>Debug: Collection List</summary>
+								<pre class="debug-collections">{JSON.stringify(currentCollections, null, 2)}</pre>
+							</details>
+						{/if}
+					</div>
+					
+					{#if collectionStore.error}
+						<div class="error-banner">
+							<strong>Error:</strong> {collectionStore.error}
+							<button class="btn btn-sm btn-secondary" onclick={refreshCollections}>
+								🔄 Retry
+							</button>
+						</div>
+					{/if}
+				{:else}
+					<p class="sample-info">Using static sample collections for demo</p>
+				{/if}
+			</div>
+			
 			<CollectionSidebarView
-				collections={sampleCollections}
+				collections={currentCollections}
 				{selectedCollectionId}
 				{pinnedCollectionIds}
 				{expandedCollectionIds}
@@ -416,6 +541,126 @@
 	.btn-success:hover {
 		background: #059669;
 		border-color: #059669;
+	}
+
+	.btn-info {
+		background: #0ea5e9;
+		color: white;
+		border-color: #0ea5e9;
+	}
+
+	.btn-info:hover:not(:disabled) {
+		background: #0284c7;
+		border-color: #0284c7;
+	}
+
+	.btn-warning {
+		background: #f59e0b;
+		color: white;
+		border-color: #f59e0b;
+	}
+
+	.btn-warning:hover:not(:disabled) {
+		background: #d97706;
+		border-color: #d97706;
+	}
+
+	.btn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* 데이터 소스 상태 */
+	.data-source-status {
+		margin: 1rem;
+		padding: 1rem;
+		background: #f8fafc;
+		border: 1px solid #e2e8f0;
+		border-radius: 8px;
+		font-size: 0.875rem;
+	}
+
+	.status-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.75rem;
+	}
+
+	.status-header h4 {
+		margin: 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: #1e293b;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.status-badge {
+		padding: 0.25rem 0.5rem;
+		border-radius: 4px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.status-badge.sample {
+		background: #e0e7ff;
+		color: #3730a3;
+	}
+
+	.status-badge.real {
+		background: #dcfce7;
+		color: #166534;
+	}
+
+	.pb-info p, .sample-info {
+		margin: 0.5rem 0;
+		font-size: 0.75rem;
+		color: #475569;
+	}
+
+	.connection-status.connected {
+		color: #059669;
+	}
+
+	.connection-status.disconnected {
+		color: #dc2626;
+	}
+
+	.error-text {
+		color: #dc2626 !important;
+	}
+
+	.error-banner {
+		background: #fef2f2;
+		border: 1px solid #fecaca;
+		border-radius: 4px;
+		padding: 0.75rem;
+		margin-top: 0.75rem;
+		color: #991b1b;
+		font-size: 0.75rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.sample-info {
+		font-style: italic;
+		color: #64748b;
+	}
+
+	.debug-collections {
+		background: #1e1e1e;
+		color: #d4d4d4;
+		padding: 0.75rem;
+		border-radius: 4px;
+		font-size: 0.65rem;
+		max-height: 200px;
+		overflow: auto;
+		margin-top: 0.5rem;
 	}
 
 	/* 반응형 */

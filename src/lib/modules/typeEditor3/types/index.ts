@@ -5,6 +5,17 @@
 // JSON data type
 export type JsonData = Record<string, any>;
 
+// Collection 타입 (PocketBase 컬렉션 정보)
+export interface Collection {
+  id: string;
+  name: string;
+  type: string;
+  created?: string;
+  updated?: string;
+  schema?: any[];
+  system?: boolean;
+}
+
 // 샘플 데이터
 export const sampleJsonData: JsonData = {
   user: {
